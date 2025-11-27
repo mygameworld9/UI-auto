@@ -5,7 +5,7 @@ import { ComponentRegistry } from './ui/Registry';
 interface RendererProps {
   node: UINode;
   onAction: (action: UIAction) => void;
-  index?: number; // Used for key generation if IDs are missing
+  index?: number;
 }
 
 interface ErrorBoundaryProps {
@@ -35,40 +35,53 @@ class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundarySta
   }
 }
 
-// 4.2 Recursive Renderer Logic
+/**
+ * THE RECURSIVE RENDERER
+ * Core Logic:
+ * 1. Receives a "Loose" JSON Node (e.g., { button: { label: "Submit" } })
+ * 2. Finds the key that matches a component in our Registry ("button")
+ * 3. Extracts props from that key
+ * 4. Renders the component and recursively renders its `children`
+ */
 const DynamicRenderer: React.FC<RendererProps> = ({ node, onAction, index = 0 }) => {
+  // Safety check
   if (!node || typeof node !== 'object') return null;
 
-  // Find the key that matches a registered component
+  // 1. Identify Component Type
+  // We look for the first key in the node object that exists in our ComponentRegistry.
+  // This adheres to the "OneOf" Protobuf-style schema where a node has exactly one active field.
   const componentType = Object.keys(node).find(key => ComponentRegistry[key]);
 
+  // 2. Fallback for Unknown Types
   if (!componentType) {
     const unknownKey = Object.keys(node)[0] || 'unknown';
-    console.warn(`Unknown component type: ${unknownKey}`);
+    // Only warn in dev console, UI shows a discreet placeholder
+    console.warn(`[GenUI] Unknown component type: ${unknownKey}`, node);
     return (
-      <div className="p-4 border border-dashed border-red-500 text-red-500 rounded bg-red-500/10 text-xs font-mono">
-        Unknown Node: {JSON.stringify(node).slice(0, 50)}...
+      <div className="p-2 border border-dashed border-slate-700 rounded bg-slate-900/50 text-slate-500 text-[10px] font-mono">
+        UNKNOWN: {unknownKey}
       </div>
     );
   }
 
+  // 3. Resolve Component & Props
   const Component = ComponentRegistry[componentType];
-  const props = node[componentType] || {};
+  const props = node[componentType] || {}; // Extract the "Value" of the OneOf
   const { children, ...restProps } = props;
 
-  // Render children recursively if they exist
-  // We use the index as a fallback key since generated JSON might not have IDs
+  // 4. Recursion
   const renderedChildren = Array.isArray(children) 
     ? children.map((child: UINode, i: number) => (
         <DynamicRenderer key={i} index={i} node={child} onAction={onAction} />
       ))
     : null;
 
+  // 5. Render with Error Boundary
   return (
     <ErrorBoundary 
       fallback={
-        <div className="text-xs text-red-400 p-2 bg-red-900/20 rounded">
-          Error in {componentType}
+        <div className="text-xs text-red-400 p-2 border border-red-900/50 bg-red-900/10 rounded">
+          Failed: {componentType}
         </div>
       }
     >
