@@ -5,10 +5,11 @@ import DynamicRenderer from './components/DynamicRenderer';
 import { UINode, UserContext, UIAction } from './types';
 import { INITIAL_CONTEXT } from './constants';
 import { 
-  User, Sparkles, Smartphone, Monitor, Shield, Zap, Box, Terminal, ArrowUp, Activity, Gauge
+  User, Sparkles, Smartphone, Monitor, Shield, Zap, Box, Terminal, ArrowUp, Activity, Gauge, Code2
 } from 'lucide-react';
 import { telemetry } from './services/telemetry';
 import confetti from 'canvas-confetti';
+import { CodeViewer } from './components/CodeViewer';
 
 /**
  * Immutable Deep Set Utility (Recursive & Type-Safe)
@@ -436,45 +437,61 @@ const App = () => {
 };
 
 // Helper Component for the Device Frame
-const DeviceWrapper = ({ context, node, onAction, isStreaming }: any) => (
-    <div 
-        className={`transition-all duration-700 ease-in-out relative
-            ${context.device === 'mobile' ? 'w-[375px]' : 'w-full'}
-            ${isStreaming ? 'opacity-80' : 'opacity-100'}
-        `}
-    >
-        {/* Device Label */}
-        <div className="absolute -top-8 left-1/2 -translate-x-1/2 text-[10px] font-mono text-slate-500 tracking-widest uppercase bg-zinc-950 px-2 flex items-center gap-2">
-            {context.device === 'mobile' ? 'iPhone 15 Viewport' : 'Desktop Viewport'}
-            {isStreaming && <span className="w-1.5 h-1.5 bg-amber-500 rounded-full animate-pulse" />}
-        </div>
+const DeviceWrapper = ({ context, node, onAction, isStreaming }: any) => {
+    const [showCode, setShowCode] = useState(false);
 
-        <div className="bg-zinc-900 rounded-xl overflow-hidden shadow-2xl ring-1 ring-white/10 relative group-ui">
-            {/* Mock Browser Header */}
-            <div className="h-9 bg-zinc-950/50 border-b border-white/5 flex items-center px-4 gap-2">
-                <div className="flex gap-1.5">
-                    <div className="w-2.5 h-2.5 rounded-full bg-zinc-700 group-ui-hover:bg-red-500/50 transition-colors" />
-                    <div className="w-2.5 h-2.5 rounded-full bg-zinc-700 group-ui-hover:bg-yellow-500/50 transition-colors" />
-                    <div className="w-2.5 h-2.5 rounded-full bg-zinc-700 group-ui-hover:bg-green-500/50 transition-colors" />
+    return (
+        <div 
+            className={`transition-all duration-700 ease-in-out relative
+                ${context.device === 'mobile' ? 'w-[375px]' : 'w-full'}
+                ${isStreaming ? 'opacity-80' : 'opacity-100'}
+            `}
+        >
+            {/* Device Label */}
+            <div className="absolute -top-8 left-1/2 -translate-x-1/2 text-[10px] font-mono text-slate-500 tracking-widest uppercase bg-zinc-950 px-2 flex items-center gap-2">
+                {context.device === 'mobile' ? 'iPhone 15 Viewport' : 'Desktop Viewport'}
+                {isStreaming && <span className="w-1.5 h-1.5 bg-amber-500 rounded-full animate-pulse" />}
+            </div>
+
+            <div className="bg-zinc-900 rounded-xl overflow-hidden shadow-2xl ring-1 ring-white/10 relative group-ui">
+                {/* Mock Browser Header with Code Toggle */}
+                <div className="h-9 bg-zinc-950/50 border-b border-white/5 flex items-center px-4 gap-2 justify-between">
+                    <div className="flex gap-1.5">
+                        <div className="w-2.5 h-2.5 rounded-full bg-zinc-700 group-ui-hover:bg-red-500/50 transition-colors" />
+                        <div className="w-2.5 h-2.5 rounded-full bg-zinc-700 group-ui-hover:bg-yellow-500/50 transition-colors" />
+                        <div className="w-2.5 h-2.5 rounded-full bg-zinc-700 group-ui-hover:bg-green-500/50 transition-colors" />
+                    </div>
+                    <div className="w-1/2 h-5 bg-zinc-800/50 rounded flex items-center justify-center">
+                        <span className="text-[9px] text-zinc-600 font-mono">localhost:3000</span>
+                    </div>
+                    <button 
+                        onClick={() => setShowCode(true)}
+                        className="text-zinc-600 hover:text-indigo-400 transition-colors p-1"
+                        title="View Source Code"
+                    >
+                        <Code2 className="w-4 h-4" />
+                    </button>
                 </div>
-                <div className="mx-auto w-1/2 h-5 bg-zinc-800/50 rounded flex items-center justify-center">
-                    <span className="text-[9px] text-zinc-600 font-mono">localhost:3000</span>
+                
+                {/* Component Renderer */}
+                <div className={`
+                    bg-slate-950
+                    ${context.device === 'mobile' ? 'min-h-[667px]' : 'min-h-[500px]'}
+                    overflow-hidden
+                `}>
+                    <DynamicRenderer node={node} onAction={onAction} />
                 </div>
+
+                {/* Code Overlay */}
+                {showCode && (
+                    <CodeViewer node={node} onClose={() => setShowCode(false)} />
+                )}
             </div>
             
-            {/* Component Renderer */}
-            <div className={`
-                bg-slate-950
-                ${context.device === 'mobile' ? 'min-h-[667px]' : 'min-h-[500px]'}
-                overflow-hidden
-            `}>
-                <DynamicRenderer node={node} onAction={onAction} />
-            </div>
+            {/* Decor effects */}
+            <div className="absolute -inset-4 bg-gradient-to-r from-indigo-500/10 to-purple-500/10 rounded-2xl blur-2xl -z-10 opacity-50" />
         </div>
-        
-        {/* Decor effects */}
-        <div className="absolute -inset-4 bg-gradient-to-r from-indigo-500/10 to-purple-500/10 rounded-2xl blur-2xl -z-10 opacity-50" />
-    </div>
-);
+    );
+};
 
 export default App;
