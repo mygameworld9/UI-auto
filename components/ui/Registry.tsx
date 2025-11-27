@@ -4,18 +4,20 @@ import { Typography } from './Typography';
 import { Button } from './Button';
 import { Hero } from './Hero';
 import { Card } from './Card';
-import { Table } from './Table';
 import { StatCard } from './StatCard';
 import { Progress } from './Progress';
 import { Alert } from './Alert';
 import { Avatar } from './Avatar';
-import { ChartComponent } from './Chart';
 import { Input } from './Input';
 import { Separator } from './Separator';
 import { Badge } from './Badge';
 import { Accordion } from './Accordion';
 import { ImageComponent } from './Image';
-import { MapWidget } from './Map';
+
+// Lazy load heavy components to optimize bundle size and TTI
+const ChartComponent = React.lazy(() => import('./Chart').then(module => ({ default: module.ChartComponent })));
+const MapWidget = React.lazy(() => import('./Map').then(module => ({ default: module.MapWidget })));
+const Table = React.lazy(() => import('./Table').then(module => ({ default: module.Table })));
 
 /* -------------------------------------------------------------------------- */
 /*                            COMPONENT REGISTRY MAP                          */
@@ -35,10 +37,11 @@ export const ComponentRegistry: Record<string, React.FC<any>> = {
   alert: Alert,
   
   stat: StatCard,
+  progress: Progress,
+  image: ImageComponent,
+  
+  // Lazy Components
   chart: ChartComponent,
   table: Table,
-  progress: Progress,
-  
-  image: ImageComponent,
   map: MapWidget
 };

@@ -78,6 +78,7 @@ const DynamicRenderer: React.FC<RendererProps> = ({ node, onAction, index = 0 })
   const { children, ...restProps } = props;
 
   // 5. Render
+  // Added Suspense wrapper for lazy loaded components
   return (
     <ErrorBoundary 
       fallback={
@@ -86,7 +87,16 @@ const DynamicRenderer: React.FC<RendererProps> = ({ node, onAction, index = 0 })
         </div>
       }
     >
-      <Component {...restProps} children={children} onAction={onAction} />
+      <React.Suspense fallback={
+        <div className="w-full h-24 bg-zinc-900/50 border border-white/5 rounded-xl animate-pulse flex items-center justify-center">
+            <div className="flex items-center gap-2">
+                <div className="w-4 h-4 rounded-full border-2 border-indigo-500/30 border-t-indigo-500 animate-spin" />
+                <span className="text-[10px] uppercase tracking-widest text-zinc-600 font-bold">Loading {componentType}</span>
+            </div>
+        </div>
+      }>
+        <Component {...restProps} children={children} onAction={onAction} />
+      </React.Suspense>
     </ErrorBoundary>
   );
 };
