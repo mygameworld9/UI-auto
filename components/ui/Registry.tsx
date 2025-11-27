@@ -443,6 +443,101 @@ const Accordion = ({ items, variant = 'DEFAULT', onAction }: any) => {
   );
 };
 
+// 16. Image
+const ImageComponent = ({ src, alt, caption, aspectRatio = 'VIDEO' }: any) => {
+  const ratios: Record<string, string> = {
+    VIDEO: 'aspect-video',
+    SQUARE: 'aspect-square',
+    WIDE: 'aspect-[21/9]',
+    PORTRAIT: 'aspect-[3/4]'
+  };
+
+  return (
+    <figure className="w-full flex flex-col gap-3 group">
+      <div className={`w-full overflow-hidden rounded-xl border border-slate-700 bg-slate-800 ${ratios[aspectRatio] || ratios.VIDEO} relative`}>
+        <img 
+          src={src || 'https://via.placeholder.com/800x400/1e293b/475569?text=Image+Placeholder'} 
+          alt={alt || 'Generated Content'} 
+          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" 
+        />
+        <div className="absolute inset-0 ring-1 ring-inset ring-white/10 rounded-xl pointer-events-none" />
+      </div>
+      {caption && (
+        <figcaption className="text-xs text-center text-slate-500 font-medium tracking-wide">
+          {caption}
+        </figcaption>
+      )}
+    </figure>
+  );
+};
+
+// 17. Map Widget (Visual Representation)
+const MapWidget = ({ label, style = 'DARK', markers = [] }: any) => {
+  const bgStyles: Record<string, any> = {
+    DARK: { bg: '#0f172a', grid: '#334155' },
+    LIGHT: { bg: '#cbd5e1', grid: '#94a3b8' },
+    SATELLITE: { bg: '#020617', grid: '#1e293b' }
+  };
+  
+  const theme = bgStyles[style] || bgStyles.DARK;
+
+  return (
+    <div className="w-full h-72 rounded-xl overflow-hidden relative border border-slate-700 group shadow-2xl">
+      {/* Mock Map Background */}
+      <div 
+        className="absolute inset-0 w-full h-full transition-colors duration-500"
+        style={{ backgroundColor: theme.bg }}
+      >
+        <div 
+          className="absolute inset-0 opacity-20"
+          style={{ 
+            backgroundImage: `linear-gradient(${theme.grid} 1px, transparent 1px), linear-gradient(90deg, ${theme.grid} 1px, transparent 1px)`,
+            backgroundSize: '40px 40px'
+          }}
+        />
+      </div>
+
+      {/* UI Overlay */}
+      <div className="absolute top-4 left-4 bg-slate-900/90 backdrop-blur-md px-3 py-2 rounded-lg border border-slate-700 shadow-xl flex items-center gap-2">
+        <Lucide.Map className="w-4 h-4 text-blue-400" />
+        <span className="text-xs font-bold text-slate-200">{label || 'Geographic View'}</span>
+      </div>
+
+      {/* Zoom Controls */}
+      <div className="absolute bottom-4 right-4 flex flex-col gap-1">
+        <button className="w-8 h-8 bg-slate-900/90 backdrop-blur-md rounded-t-lg border border-slate-700 flex items-center justify-center text-slate-400 hover:text-white hover:bg-slate-800 transition-colors">
+          <Lucide.Plus className="w-4 h-4" />
+        </button>
+        <button className="w-8 h-8 bg-slate-900/90 backdrop-blur-md rounded-b-lg border-x border-b border-slate-700 flex items-center justify-center text-slate-400 hover:text-white hover:bg-slate-800 transition-colors">
+          <Lucide.Minus className="w-4 h-4" />
+        </button>
+      </div>
+
+      {/* Markers */}
+      {markers && markers.map((m: any, i: number) => {
+        // Simple distinct positioning based on index to fake randomness if lat/lng are generic
+        const top = 20 + ((i * 37) % 60) + '%';
+        const left = 20 + ((i * 53) % 60) + '%';
+        
+        return (
+          <div 
+            key={i} 
+            className="absolute transform -translate-x-1/2 -translate-y-1/2 group/marker cursor-pointer"
+            style={{ top, left }}
+          >
+            <div className="relative flex flex-col items-center">
+               <div className="w-3 h-3 bg-blue-500 rounded-full ring-4 ring-blue-500/30 animate-pulse" />
+               <div className="absolute -top-8 opacity-0 group-hover/marker:opacity-100 transition-all transform translate-y-2 group-hover/marker:translate-y-0 bg-slate-900 text-[10px] px-2 py-1 rounded border border-slate-700 whitespace-nowrap z-20 shadow-xl font-bold">
+                  {m.title}
+               </div>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+};
+
 /* -------------------------------------------------------------------------- */
 /*                            COMPONENT REGISTRY MAP                          */
 /* -------------------------------------------------------------------------- */
@@ -463,5 +558,8 @@ export const ComponentRegistry: Record<string, React.FC<any>> = {
   stat: StatCard,
   chart: ChartComponent,
   table: Table,
-  progress: Progress
+  progress: Progress,
+  
+  image: ImageComponent,
+  map: MapWidget
 };

@@ -27,6 +27,7 @@ export type ComponentType =
   | 'alert'    
   | 'avatar'   
   | 'image'
+  | 'map'
   | 'accordion';
 
 // User Context for 1.1 Implicit Input

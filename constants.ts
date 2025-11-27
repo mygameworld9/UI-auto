@@ -89,6 +89,20 @@ Each node MUST be an object with EXACTLY ONE key (the component name).
     - Props:
       - variant: "DEFAULT", "SEPARATED"
       - items: Array<{ title: string, content: Array<Nodes> }>
+
+13. "image"
+    - Props:
+      - src: string (Use placeholder APIs if needed)
+      - alt: string
+      - caption: string
+      - aspectRatio: "VIDEO", "SQUARE", "WIDE"
+
+14. "map"
+    - Props:
+      - label: string
+      - defaultZoom: number
+      - style: "DARK", "LIGHT", "SATELLITE"
+      - markers: Array<{ title: string, lat: number, lng: number }>
 `;
 
 export const FEW_SHOT_EXAMPLES = `
@@ -171,12 +185,10 @@ Response:
              },
              {
                "card": {
-                 "title": "Storage Usage",
+                 "title": "Regional Coverage",
                  "variant": "OUTLINED",
                  "children": [
-                   { "progress": { "label": "Database A", "value": 75, "color": "BLUE" } },
-                   { "progress": { "label": "Database B", "value": 45, "color": "GREEN" } },
-                   { "progress": { "label": "Cache Cluster", "value": 90, "color": "ORANGE" } }
+                   { "map": { "label": "Active Zones", "style": "DARK", "markers": [{ "title": "US-East", "lat": 40, "lng": -74 }, { "title": "EU-West", "lat": 51, "lng": 0 }] } }
                  ]
                }
              },
