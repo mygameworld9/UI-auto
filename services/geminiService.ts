@@ -1,6 +1,8 @@
+
 import { GoogleGenAI } from "@google/genai";
 import { COMPONENT_SPECS, SYSTEM_INSTRUCTION, FEW_SHOT_EXAMPLES } from "../constants";
 import { UserContext } from "../types";
+import { telemetry } from "./telemetry";
 
 // 2.1 & 2.2 Constructing the Prompt with Context
 const buildPrompt = (userInput: string, context: UserContext): string => {
@@ -31,6 +33,9 @@ export async function* generateUIStream(prompt: string, context: UserContext): A
   const genAI = new GoogleGenAI({ apiKey: process.env.API_KEY || '' });
 
   const fullPrompt = buildPrompt(prompt, context);
+  const traceId = telemetry.startTrace('generate_ui_stream');
+  let firstTokenReceived = false;
+  let accumulatedSize = 0;
 
   try {
     const responseStream = await genAI.models.generateContentStream({
@@ -45,13 +50,26 @@ export async function* generateUIStream(prompt: string, context: UserContext): A
 
     for await (const chunk of responseStream) {
       const text = chunk.text;
+      
+      if (!firstTokenReceived) {
+        const startTime = telemetry.getStartTime(traceId);
+        if (startTime) {
+           const ttft = performance.now() - startTime;
+           telemetry.logMetric(traceId, 'TTFT', ttft);
+        }
+        firstTokenReceived = true;
+      }
+
       if (text) {
+        accumulatedSize += text.length;
         yield text;
       }
     }
 
   } catch (error) {
     console.error("Generative UI Stream Error:", error);
+    telemetry.logEvent(traceId, 'ERROR', { error: String(error) });
+    
     // Yield a valid error JSON so the parser can handle it gracefully
     yield JSON.stringify({
       container: {
@@ -68,5 +86,8 @@ export async function* generateUIStream(prompt: string, context: UserContext): A
         ]
       }
     });
+  } finally {
+    telemetry.logMetric(traceId, 'SIZE', accumulatedSize);
+    telemetry.endTrace(traceId);
   }
 }

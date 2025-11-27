@@ -1,7 +1,9 @@
+
 import React from 'react';
 import { UINode, UIAction } from '../types';
 import { ComponentRegistry } from './ui/Registry';
 import { validateNode } from '../services/schemas';
+import { telemetry } from '../services/telemetry';
 
 interface RendererProps {
   node: UINode;
@@ -56,6 +58,19 @@ const DynamicRenderer: React.FC<RendererProps> = ({ node, onAction, index = 0 })
 
   const validNode = validateNode(node);
   if (!validNode) {
+    // Check if it's a hallucination (invalid schema but not empty)
+    // We only log if it's not a known partial state. 
+    // Since stream is continuous, we might log transient errors, so we debounce or check key existence.
+    // For now, if it has keys but fails validation, we assume hallucination/schema violation.
+    if (Object.keys(node).length > 0) {
+       // We use a generic traceId 'render_pass' or similar since we don't pass traceId down prop tree
+       // to avoid prop drilling heaven.
+       telemetry.logEvent('render_validation', 'HALLUCINATION', { 
+         nodeKeys: Object.keys(node),
+         raw: JSON.stringify(node).substring(0, 50) + '...'
+       });
+    }
+
     // If validation fails, we return null. 
     // In a stream, this usually means the chunk hasn't completed this node's definition yet.
     return null; 

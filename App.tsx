@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { generateUIStream } from './services/geminiService';
 import { parsePartialJson } from './services/streamParser';
@@ -5,8 +6,9 @@ import DynamicRenderer from './components/DynamicRenderer';
 import { UINode, UserContext, UIAction } from './types';
 import { INITIAL_CONTEXT } from './constants';
 import { 
-  Send, User, Sparkles, Smartphone, Monitor, Shield, Zap, Box, Terminal, ArrowUp
+  User, Sparkles, Smartphone, Monitor, Shield, Zap, Box, Terminal, ArrowUp, Activity, Gauge
 } from 'lucide-react';
+import { telemetry } from './services/telemetry';
 
 /**
  * Immutable Deep Set Utility (Recursive & Type-Safe)
@@ -64,6 +66,28 @@ const App = () => {
     { role: 'system', text: 'GenUI Studio is ready. Describe a UI component, dashboard, or layout to generate it instantly.' }
   ]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Telemetry State
+  const [metrics, setMetrics] = useState({
+    ttft: 0,
+    latency: 0,
+    active: false,
+    hallucinations: 0
+  });
+
+  // Subscribe to telemetry
+  useEffect(() => {
+    const unsubscribe = telemetry.subscribe((event) => {
+      setMetrics(prev => {
+        if (event.name === 'STREAM_START') return { ...prev, active: true, latency: 0, ttft: 0 };
+        if (event.name === 'STREAM_COMPLETE') return { ...prev, active: false, latency: event.value };
+        if (event.name === 'TTFT') return { ...prev, ttft: event.value };
+        if (event.name === 'HALLUCINATION') return { ...prev, hallucinations: prev.hallucinations + 1 };
+        return prev;
+      });
+    });
+    return unsubscribe;
+  }, []);
 
   // Auto-scroll to bottom of chat
   useEffect(() => {
@@ -304,7 +328,33 @@ const App = () => {
 
       {/* 3. Floating Command Bar (Input) */}
       <div className="fixed bottom-0 left-0 right-0 p-6 z-50 bg-gradient-to-t from-zinc-950 via-zinc-950/80 to-transparent pointer-events-none">
-        <div className="max-w-2xl mx-auto pointer-events-auto">
+        <div className="max-w-2xl mx-auto pointer-events-auto relative">
+            
+            {/* Telemetry Status Bar - Tech Style */}
+            <div className="absolute -top-10 right-0 flex items-center gap-4 text-[10px] font-mono text-zinc-500 bg-zinc-950/90 border border-zinc-800 rounded px-3 py-1 backdrop-blur opacity-80 hover:opacity-100 transition-opacity">
+               <div className="flex items-center gap-1.5">
+                  <Activity className={`w-3 h-3 ${metrics.active ? 'text-emerald-400 animate-pulse' : 'text-zinc-600'}`} />
+                  <span className={metrics.active ? 'text-emerald-400' : ''}>{metrics.active ? 'STREAMING' : 'IDLE'}</span>
+               </div>
+               <div className="w-px h-3 bg-zinc-800" />
+               <div className="flex items-center gap-1.5">
+                  <Gauge className="w-3 h-3" />
+                  <span>TTFT: {metrics.ttft > 0 ? `${metrics.ttft.toFixed(0)}ms` : '--'}</span>
+               </div>
+               <div className="w-px h-3 bg-zinc-800" />
+               <div className="flex items-center gap-1.5">
+                  <span>LATENCY: {metrics.latency > 0 ? `${metrics.latency.toFixed(0)}ms` : '--'}</span>
+               </div>
+               {metrics.hallucinations > 0 && (
+                   <>
+                       <div className="w-px h-3 bg-zinc-800" />
+                       <div className="flex items-center gap-1.5 text-pink-500 font-bold">
+                          <span>ERR: {metrics.hallucinations}</span>
+                       </div>
+                   </>
+               )}
+            </div>
+
             <form onSubmit={handleSubmit} className="relative group transform transition-all hover:-translate-y-1">
                 <div className="absolute inset-0 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 rounded-2xl blur opacity-20 group-hover:opacity-40 transition-opacity duration-500" />
                 
