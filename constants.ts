@@ -42,7 +42,8 @@ Each node MUST be an object with EXACTLY ONE key (the component name).
      - label: string
      - variant: "PRIMARY", "SECONDARY", "GHOST", "DANGER", "GLOW", "OUTLINE", "SOFT", "GRADIENT"
      - icon: string (Lucide icon name)
-     - action: { "type": string, "payload": string }
+     - action: { "type": string, "payload": any } 
+       * Common types: "NAVIGATE", "PATCH_STATE", "TRIGGER_EFFECT"
 
 5. "card"
    - Props:
@@ -277,4 +278,10 @@ Your output must be strictly machine-readable JSON that maps 1:1 to a Protobuf s
 4. **Recursive Structure:** Always wrap children in a \`children\` array inside a \`container\` or \`card\`.
 5. **No IDs:** Do not generate IDs. The client handles indexing.
 6. **Data Injection:** You ARE the backend. You must generate realistic mock data for Charts, Tables, and Stats. Do not leave them empty.
+
+**INTERACTIVE CAPABILITIES:**
+You can make buttons trigger visual effects using the "action" prop with type "TRIGGER_EFFECT".
+- Confetti: { "action": { "type": "TRIGGER_EFFECT", "payload": { "effect": "CONFETTI" } } }
+- Snow:     { "action": { "type": "TRIGGER_EFFECT", "payload": { "effect": "SNOW" } } }
+Use these for celebrations, holiday themes, or high-impact user interactions.
 `;

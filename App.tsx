@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { generateUIStream } from './services/geminiService';
 import { parsePartialJson } from './services/streamParser';
@@ -9,6 +8,7 @@ import {
   User, Sparkles, Smartphone, Monitor, Shield, Zap, Box, Terminal, ArrowUp, Activity, Gauge
 } from 'lucide-react';
 import { telemetry } from './services/telemetry';
+import confetti from 'canvas-confetti';
 
 /**
  * Immutable Deep Set Utility (Recursive & Type-Safe)
@@ -96,7 +96,50 @@ const App = () => {
 
   // 3.2 Action Protocol & Local State Patch
   const handleAction = (action: UIAction) => {
-    // 1. Handle State Patching
+    // 1. Handle Visual Effects
+    if (action.type === 'TRIGGER_EFFECT') {
+        const effect = action.payload?.effect;
+        if (effect === 'CONFETTI') {
+            confetti({
+                particleCount: 100,
+                spread: 70,
+                origin: { y: 0.6 }
+            });
+        } else if (effect === 'SNOW') {
+            const duration = 5000;
+            const animationEnd = Date.now() + duration;
+            let skew = 1;
+
+            (function frame() {
+                const timeLeft = animationEnd - Date.now();
+                const ticks = Math.max(200, 500 * (timeLeft / duration));
+                skew = Math.max(0.8, skew - 0.001);
+
+                confetti({
+                    particleCount: 1,
+                    startVelocity: 0,
+                    ticks: ticks,
+                    origin: {
+                        x: Math.random(),
+                        // since particles fall down, skew is better than nothing
+                        y: (Math.random() * skew) - 0.2
+                    },
+                    colors: ['#ffffff'],
+                    shapes: ['circle'],
+                    gravity: 0.6,
+                    scalar: 0.6,
+                    drift: 0,
+                });
+
+                if (timeLeft > 0) {
+                    requestAnimationFrame(frame);
+                }
+            }());
+        }
+        return;
+    }
+
+    // 2. Handle State Patching
     if (action.type === 'PATCH_STATE' && action.path) {
         // CASE A: User is interacting with a node that is currently streaming/generating
         if (streamingNode) {
@@ -128,7 +171,7 @@ const App = () => {
         return;
     }
 
-    // 2. Handle System Actions (Logging / Navigation fallbacks)
+    // 3. Handle System Actions (Logging / Navigation fallbacks)
     const responseText = `Action Executed: ${action.type} (Payload: ${JSON.stringify(action.payload)})`;
     setMessages(prev => [...prev, { role: 'system', text: responseText }]);
   };
