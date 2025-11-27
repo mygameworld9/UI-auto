@@ -84,6 +84,11 @@ Each node MUST be an object with EXACTLY ONE key (the component name).
       - type: "BAR", "LINE", "AREA"
       - color: string (Hex)
       - data: Array<{ name: string, value: number }>
+
+12. "accordion"
+    - Props:
+      - variant: "DEFAULT", "SEPARATED"
+      - items: Array<{ title: string, content: Array<Nodes> }>
 `;
 
 export const FEW_SHOT_EXAMPLES = `

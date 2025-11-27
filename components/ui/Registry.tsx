@@ -110,7 +110,7 @@ const Button = ({ label, variant = 'PRIMARY', icon, action, onAction }: any) => 
   );
 };
 
-// 4. Hero Section (NEW)
+// 4. Hero Section
 const Hero = ({ title, subtitle, gradient = 'BLUE_PURPLE', align = 'CENTER', children, onAction }: any) => {
   const gradients: Record<string, string> = {
     BLUE_PURPLE: 'from-blue-600 via-indigo-500 to-purple-600',
@@ -167,7 +167,7 @@ const Card = ({ children, title, variant = 'DEFAULT', onAction }: any) => {
   );
 };
 
-// 6. Table (NEW)
+// 6. Table
 const Table = ({ headers, rows, onAction }: any) => {
   return (
     <div className="w-full overflow-hidden rounded-lg border border-slate-700 bg-slate-900/50">
@@ -228,7 +228,7 @@ const StatCard = ({ label, value, trend, trendDirection }: any) => {
   );
 };
 
-// 8. Progress (NEW)
+// 8. Progress
 const Progress = ({ label, value, color = 'BLUE' }: any) => {
   const colors: Record<string, string> = {
     BLUE: 'bg-blue-500',
@@ -252,7 +252,7 @@ const Progress = ({ label, value, color = 'BLUE' }: any) => {
   );
 };
 
-// 9. Alert (NEW)
+// 9. Alert
 const Alert = ({ title, description, variant = 'INFO' }: any) => {
   const variants: Record<string, any> = {
     INFO: { style: 'bg-blue-900/20 border-blue-500/30 text-blue-200', icon: Lucide.Info },
@@ -274,7 +274,7 @@ const Alert = ({ title, description, variant = 'INFO' }: any) => {
   );
 };
 
-// 10. Avatar (NEW)
+// 10. Avatar
 const Avatar = ({ initials, src, status }: any) => {
   const statusColors: Record<string, string> = {
     ONLINE: 'bg-emerald-500',
@@ -390,6 +390,59 @@ const Badge = ({ label, color = 'BLUE' }: any) => {
   );
 };
 
+// 15. Accordion
+const Accordion = ({ items, variant = 'DEFAULT', onAction }: any) => {
+  const [openIndex, setOpenIndex] = React.useState<number | null>(0);
+
+  const toggle = (index: number) => {
+    setOpenIndex(openIndex === index ? null : index);
+  };
+
+  if (!items || !Array.isArray(items)) return null;
+
+  const containerStyles: Record<string, string> = {
+    DEFAULT: 'divide-y divide-slate-700 border border-slate-700 rounded-xl overflow-hidden bg-slate-800/50',
+    SEPARATED: 'space-y-4'
+  };
+
+  const itemStyles: Record<string, string> = {
+    DEFAULT: 'bg-transparent',
+    SEPARATED: 'border border-slate-700 rounded-xl bg-slate-800/50 overflow-hidden'
+  };
+
+  return (
+    <div className={`w-full ${containerStyles[variant] || containerStyles.DEFAULT}`}>
+      {items.map((item: any, i: number) => {
+        const isOpen = openIndex === i;
+        const content = Array.isArray(item.content) ? item.content : [];
+        
+        return (
+          <div key={i} className={itemStyles[variant] || itemStyles.DEFAULT}>
+            <button
+              onClick={() => toggle(i)}
+              className="w-full flex items-center justify-between px-6 py-4 text-left hover:bg-white/5 transition-colors focus:outline-none"
+            >
+              <span className={`font-medium ${isOpen ? 'text-blue-400' : 'text-slate-200'}`}>
+                {item.title}
+              </span>
+              <Lucide.ChevronDown
+                className={`w-5 h-5 text-slate-500 transition-transform duration-300 ${isOpen ? 'rotate-180' : ''}`}
+              />
+            </button>
+            {isOpen && (
+              <div className="px-6 pb-6 pt-2 border-t border-slate-700/50">
+                <div className="text-slate-400">
+                  <RenderChildren children={content} onAction={onAction} />
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+};
+
 /* -------------------------------------------------------------------------- */
 /*                            COMPONENT REGISTRY MAP                          */
 /* -------------------------------------------------------------------------- */
@@ -398,6 +451,7 @@ export const ComponentRegistry: Record<string, React.FC<any>> = {
   card: Card,
   separator: Separator,
   hero: Hero,
+  accordion: Accordion,
   
   text: Typography,
   button: Button,
