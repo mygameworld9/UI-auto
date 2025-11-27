@@ -8,6 +8,50 @@ import {
   Send, User, Sparkles, Smartphone, Monitor, Shield, Zap, Box, Terminal, ArrowUp
 } from 'lucide-react';
 
+/**
+ * Immutable Deep Set Utility (Production Ready)
+ * Safely updates a nested value within an object tree using dot-notation path,
+ * ensuring structural sharing/immutability for React state updates.
+ */
+const setByPath = (obj: any, path: string, value: any): any => {
+  if (!obj || typeof obj !== 'object') return obj;
+  if (!path) return value;
+
+  const segments = path.split('.');
+  
+  // Determine root clone type
+  const root = Array.isArray(obj) ? [...obj] : { ...obj };
+  let current = root;
+
+  for (let i = 0; i < segments.length - 1; i++) {
+    const key = segments[i];
+    const nextKey = segments[i + 1];
+
+    // Check if the current key exists
+    const existingVal = current[key];
+    
+    // Determine if we need to clone an array or an object
+    // If it doesn't exist, we guess type based on next key (numeric -> array)
+    let nextVal;
+    if (existingVal && typeof existingVal === 'object') {
+      nextVal = Array.isArray(existingVal) ? [...existingVal] : { ...existingVal };
+    } else {
+      // Auto-vivification for missing paths
+      nextVal = !isNaN(Number(nextKey)) ? [] : {};
+    }
+
+    // Assign and move down
+    current[key] = nextVal;
+    current = current[key];
+  }
+
+  // Set the final value
+  const lastKey = segments[segments.length - 1];
+  current[lastKey] = value;
+
+  return root;
+};
+
 const App = () => {
   // State
   const [context, setContext] = useState<UserContext>(INITIAL_CONTEXT);
@@ -25,17 +69,43 @@ const App = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, loading, streamingNode]);
 
-  // 3.2 Action Protocol & Local State Patch
+  // 3.2 Action Protocol & Local State Patch (Implemented)
   const handleAction = (action: UIAction) => {
-    console.log("Action Triggered:", action);
-    
+    // 1. Handle State Patching
     if (action.type === 'PATCH_STATE' && action.path) {
-        // Implement complex deep patch logic here if needed
-        // For now, we just log it as the focus is on Streaming
-        console.log("Local State Patch requested:", action.path, action.payload);
+        // CASE A: User is interacting with a node that is currently streaming/generating
+        if (streamingNode) {
+            setStreamingNode((prev) => setByPath(prev, action.path!, action.payload));
+            return;
+        }
+
+        // CASE B: User is interacting with a finalized node in the history
+        // We find the most recent message that contains a UI and patch it.
+        setMessages((prevMessages) => {
+            const newMessages = [...prevMessages];
+            // Search backwards for the last message with a UI payload
+            let targetIndex = -1;
+            for (let i = newMessages.length - 1; i >= 0; i--) {
+                if (newMessages[i].ui) {
+                    targetIndex = i;
+                    break;
+                }
+            }
+
+            if (targetIndex !== -1) {
+                const targetMsg = { ...newMessages[targetIndex] };
+                // Immutable update of the UI tree within the message
+                targetMsg.ui = setByPath(targetMsg.ui, action.path!, action.payload);
+                newMessages[targetIndex] = targetMsg;
+            }
+
+            return newMessages;
+        });
         return;
     }
 
+    // 2. Handle System Actions (Logging / Navigation fallbacks)
+    console.log("Action Triggered:", action);
     const responseText = `Action Executed: ${action.type} (Payload: ${JSON.stringify(action.payload)})`;
     setMessages(prev => [...prev, { role: 'system', text: responseText }]);
   };
