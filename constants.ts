@@ -18,7 +18,8 @@ Each node MUST be an object with EXACTLY ONE key (the component name).
      - gap: "GAP_SM", "GAP_MD", "GAP_LG", "GAP_XL"
      - padding: boolean
      - background: "DEFAULT" (transparent), "SURFACE", "GLASS"
-     - className: string
+     - bgImage: string (URL for background image)
+     - className: string (Tailwind classes for height, aspect ratio, border radius etc.)
      - children: Array of Nodes
 
 2. "hero"
@@ -34,6 +35,7 @@ Each node MUST be an object with EXACTLY ONE key (the component name).
      - content: string
      - variant: "H1", "H2", "H3", "BODY", "CAPTION", "CODE"
      - color: "DEFAULT", "MUTED", "PRIMARY", "ACCENT", "DANGER", "SUCCESS"
+     - font: "SANS" (default), "SERIF", "CURSIVE"
 
 4. "button"
    - Props:
@@ -208,6 +210,7 @@ Response:
     ]
   }
 }
+
 EXAMPLE 3: User asks "Create a warm vintage Christmas greeting card for family"
 Response:
 {

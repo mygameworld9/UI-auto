@@ -18,6 +18,11 @@ export const THEME = {
       ACCENT: 'text-violet-400',
       DANGER: 'text-red-400',
       SUCCESS: 'text-emerald-400'
+    },
+    fonts: {
+      SANS: 'font-sans',
+      SERIF: 'font-["Playfair_Display",serif]',
+      CURSIVE: 'font-["Great_Vibes",cursive]'
     }
   },
 
@@ -55,7 +60,7 @@ export const THEME = {
   // CONTAINER
   // --------------------------------------------------------------------------
   container: {
-    base: "flex w-full transition-all",
+    base: "flex w-full transition-all relative z-0",
     layouts: {
       COL: 'flex-col',
       ROW: 'flex-row flex-wrap items-center',

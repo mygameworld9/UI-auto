@@ -51,6 +51,7 @@ const ContainerProps = z.object({
   gap: z.string().optional(),
   padding: z.boolean().optional(),
   background: z.string().optional(),
+  bgImage: z.string().optional(),
   className: z.string().optional(),
   children: NodeArray,
 });
@@ -71,6 +72,7 @@ const TextProps = z.object({
   content: z.string().optional().default(""), // Allow empty, but ensure string
   variant: z.string().optional(),
   color: z.string().optional(),
+  font: z.string().optional(),
 });
 const TextNode = z.object({ text: TextProps });
 
