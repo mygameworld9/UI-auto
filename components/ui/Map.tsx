@@ -1,14 +1,9 @@
 import React from 'react';
 import * as Lucide from 'lucide-react';
+import { THEME } from './theme';
 
 export const MapWidget = ({ label, style = 'DARK', markers = [] }: any) => {
-  const bgStyles: Record<string, any> = {
-    DARK: { bg: '#18181b', grid: '#27272a' },
-    LIGHT: { bg: '#cbd5e1', grid: '#94a3b8' },
-    SATELLITE: { bg: '#020617', grid: '#1e293b' }
-  };
-  
-  const theme = bgStyles[style] || bgStyles.DARK;
+  const theme = THEME.map.styles[style as keyof typeof THEME.map.styles] || THEME.map.styles.DARK;
 
   return (
     <div className="w-full h-72 rounded-xl overflow-hidden relative border border-zinc-700 group shadow-2xl">

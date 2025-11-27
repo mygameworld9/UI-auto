@@ -208,6 +208,53 @@ Response:
     ]
   }
 }
+EXAMPLE 3: User asks "Create a warm vintage Christmas greeting card for family"
+Response:
+{
+  "container": {
+    "layout": "COL",
+    "padding": true,
+    "gap": "GAP_LG",
+    "className": "aspect-[3/4] max-w-md mx-auto rounded-3xl shadow-2xl border-4 border-amber-900/40 items-center text-center justify-center relative overflow-hidden",
+    "bgImage": "https://images.unsplash.com/photo-1576919228236-a097c32a5cd4?q=80&w=1000&auto=format&fit=crop",
+    "children": [
+      {
+        "text": {
+          "content": "Merry Christmas",
+          "variant": "H1",
+          "color": "ACCENT", 
+          "font": "CURSIVE"
+        }
+      },
+      {
+        "text": {
+          "content": "May your days be merry and bright, and may all your Christmases be white.",
+          "variant": "BODY",
+          "color": "DEFAULT",
+          "font": "SERIF"
+        }
+      },
+      { 
+        "container": { 
+           "layout": "COL", 
+           "gap": "GAP_SM",
+           "className": "w-full items-center",
+           "children": [
+              { "separator": {} },
+              {
+                "text": {
+                  "content": "With love, The Smiths",
+                  "variant": "H3",
+                  "color": "DEFAULT",
+                  "font": "CURSIVE"
+                }
+              }
+           ]
+        }
+      }
+    ]
+  }
+}
 `;
 
 export const SYSTEM_INSTRUCTION = `

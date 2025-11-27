@@ -1,11 +1,9 @@
 import React from 'react';
+import { THEME } from './theme';
 
 export const Avatar = ({ initials, src, status }: any) => {
-  const statusColors: Record<string, string> = {
-    ONLINE: 'bg-emerald-500',
-    OFFLINE: 'bg-slate-500',
-    BUSY: 'bg-red-500'
-  };
+  const statusColor = status ? (THEME.avatar.status[status as keyof typeof THEME.avatar.status] || THEME.avatar.status.OFFLINE) : '';
+
   return (
     <div className="relative inline-block group">
       <div className="w-10 h-10 rounded-full overflow-hidden bg-zinc-800 flex items-center justify-center border border-zinc-700 ring-2 ring-transparent group-hover:ring-white/10 transition-all">
@@ -16,7 +14,7 @@ export const Avatar = ({ initials, src, status }: any) => {
         )}
       </div>
       {status && (
-        <div className={`absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full border-2 border-zinc-950 ${statusColors[status] || 'bg-slate-500'}`} />
+        <div className={`absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full border-2 border-zinc-950 ${statusColor}`} />
       )}
     </div>
   );

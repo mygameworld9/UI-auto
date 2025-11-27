@@ -1,16 +1,12 @@
 import React from 'react';
+import { THEME } from './theme';
 
 export const ImageComponent = ({ src, alt, caption, aspectRatio = 'VIDEO' }: any) => {
-  const ratios: Record<string, string> = {
-    VIDEO: 'aspect-video',
-    SQUARE: 'aspect-square',
-    WIDE: 'aspect-[21/9]',
-    PORTRAIT: 'aspect-[3/4]'
-  };
+  const ratioClass = THEME.image.ratios[aspectRatio as keyof typeof THEME.image.ratios] || THEME.image.ratios.VIDEO;
 
   return (
     <figure className="w-full flex flex-col gap-3 group">
-      <div className={`w-full overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900 ${ratios[aspectRatio] || ratios.VIDEO} relative`}>
+      <div className={`w-full overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900 ${ratioClass} relative`}>
         <img 
           src={src || 'https://via.placeholder.com/800x400/18181b/52525b?text=Image'} 
           alt={alt || 'Generated Content'} 

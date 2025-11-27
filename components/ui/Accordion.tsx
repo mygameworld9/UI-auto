@@ -1,6 +1,7 @@
 import React from 'react';
 import * as Lucide from 'lucide-react';
 import { RenderChildren } from './utils';
+import { THEME } from './theme';
 
 export const Accordion = ({ items, variant = 'DEFAULT', onAction }: any) => {
   const [openIndex, setOpenIndex] = React.useState<number | null>(0);
@@ -11,24 +12,17 @@ export const Accordion = ({ items, variant = 'DEFAULT', onAction }: any) => {
 
   if (!items || !Array.isArray(items)) return null;
 
-  const containerStyles: Record<string, string> = {
-    DEFAULT: 'divide-y divide-zinc-800 border border-zinc-800 rounded-xl overflow-hidden bg-zinc-900',
-    SEPARATED: 'space-y-4'
-  };
-
-  const itemStyles: Record<string, string> = {
-    DEFAULT: 'bg-transparent',
-    SEPARATED: 'border border-zinc-800 rounded-xl bg-zinc-900 overflow-hidden'
-  };
+  const containerClass = THEME.accordion.container[variant as keyof typeof THEME.accordion.container] || THEME.accordion.container.DEFAULT;
+  const itemClass = THEME.accordion.item[variant as keyof typeof THEME.accordion.item] || THEME.accordion.item.DEFAULT;
 
   return (
-    <div className={`w-full ${containerStyles[variant] || containerStyles.DEFAULT}`}>
+    <div className={`w-full ${containerClass}`}>
       {items.map((item: any, i: number) => {
         const isOpen = openIndex === i;
         const content = Array.isArray(item.content) ? item.content : [];
         
         return (
-          <div key={i} className={itemStyles[variant] || itemStyles.DEFAULT}>
+          <div key={i} className={itemClass}>
             <button
               onClick={() => toggle(i)}
               className="w-full flex items-center justify-between px-6 py-4 text-left hover:bg-white/5 transition-colors focus:outline-none"
