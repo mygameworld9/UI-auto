@@ -41,15 +41,23 @@ class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundarySta
  * 1. Receives a "Loose" JSON Node (e.g., { button: { label: "Submit" } })
  * 2. Finds the key that matches a component in our Registry ("button")
  * 3. Extracts props from that key
- * 4. Renders the component and recursively renders its `children`
+ * 4. Renders the component.
+ * 
+ * IMPORTANT: It does NOT recursively render `children` here. 
+ * It passes the raw `children` JSON array to the Component.
+ * The Component (in Registry.tsx) uses the `RenderChildren` helper to handle recursion.
+ * This architecture avoids double-rendering/recursive loops where React Elements are passed as Nodes.
  */
 const DynamicRenderer: React.FC<RendererProps> = ({ node, onAction, index = 0 }) => {
-  // Safety check
+  // Safety check: Ensure node is an object and NOT a React Element (which has $$typeof)
   if (!node || typeof node !== 'object') return null;
+  if ('$$typeof' in node) {
+    console.warn("[GenUI] Safety Check: React Element detected in DynamicRenderer data flow. Ignoring.", node);
+    return null;
+  }
 
   // 1. Identify Component Type
   // We look for the first key in the node object that exists in our ComponentRegistry.
-  // This adheres to the "OneOf" Protobuf-style schema where a node has exactly one active field.
   const componentType = Object.keys(node).find(key => ComponentRegistry[key]);
 
   // 2. Fallback for Unknown Types
@@ -69,14 +77,8 @@ const DynamicRenderer: React.FC<RendererProps> = ({ node, onAction, index = 0 })
   const props = node[componentType] || {}; // Extract the "Value" of the OneOf
   const { children, ...restProps } = props;
 
-  // 4. Recursion
-  const renderedChildren = Array.isArray(children) 
-    ? children.map((child: UINode, i: number) => (
-        <DynamicRenderer key={i} index={i} node={child} onAction={onAction} />
-      ))
-    : null;
-
-  // 5. Render with Error Boundary
+  // 4. Render
+  // Pass raw children (UINode[]) to component. Component handles rendering them via Registry.tsx/RenderChildren.
   return (
     <ErrorBoundary 
       fallback={
@@ -85,9 +87,7 @@ const DynamicRenderer: React.FC<RendererProps> = ({ node, onAction, index = 0 })
         </div>
       }
     >
-      <Component {...restProps} onAction={onAction}>
-        {renderedChildren}
-      </Component>
+      <Component {...restProps} children={children} onAction={onAction} />
     </ErrorBoundary>
   );
 };

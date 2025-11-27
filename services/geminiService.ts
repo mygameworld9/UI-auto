@@ -32,7 +32,7 @@ export const generateUI = async (prompt: string, context: UserContext): Promise<
     const fullPrompt = buildPrompt(prompt, context);
 
     const response = await genAI.models.generateContent({
-      model: 'gemini-2.5-flash', 
+      model: 'gemini-3-pro-preview', 
       contents: fullPrompt,
       config: {
         systemInstruction: SYSTEM_INSTRUCTION,

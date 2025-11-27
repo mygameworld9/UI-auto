@@ -20,7 +20,13 @@ export type ComponentType =
   | 'stat'
   | 'chart'
   | 'separator'
-  | 'badge';
+  | 'badge'
+  | 'hero'     // NEW
+  | 'table'    // NEW
+  | 'progress' // NEW
+  | 'alert'    // NEW
+  | 'avatar'   // NEW
+  | 'image';   // NEW
 
 // User Context for 1.1 Implicit Input
 export interface UserContext {

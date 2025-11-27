@@ -10,90 +10,99 @@ export const INITIAL_CONTEXT: UserContext = {
 export const COMPONENT_SPECS = `
 COMPONENT DEFINITIONS (Protobuf OneOf Schema)
 ---------------------------------------------
-Each node in the tree must be an object with EXACTLY ONE of the following keys. 
-The value of that key is the properties object.
+Each node MUST be an object with EXACTLY ONE key (the component name).
 
 1. "container"
    - Props:
      - layout: "COL" (default), "ROW", "GRID"
-     - gap: "GAP_SM", "GAP_MD", "GAP_LG"
+     - gap: "GAP_SM", "GAP_MD", "GAP_LG", "GAP_XL"
      - padding: boolean
+     - background: "DEFAULT" (transparent), "SURFACE", "GLASS"
      - className: string
      - children: Array of Nodes
-   - Example: { "container": { "layout": "ROW", "children": [ ... ] } }
 
-2. "text"
-   - Props:
-     - content: string
-     - variant: "H1", "H2", "H3", "BODY", "CAPTION"
-     - color: "DEFAULT", "MUTED", "PRIMARY", "DANGER"
-   - Example: { "text": { "content": "Dashboard", "variant": "H1" } }
-
-3. "button"
-   - Props:
-     - label: string
-     - variant: "PRIMARY", "SECONDARY", "GHOST", "DANGER"
-     - icon: string (Lucide icon name)
-     - action: { "type": "NAVIGATE" | "SUBMIT", "payload": "..." }
-   - Example: { "button": { "label": "Save", "variant": "PRIMARY" } }
-
-4. "card"
+2. "hero"
    - Props:
      - title: string
-     - variant: "DEFAULT", "GLASS"
-     - children: Array of Nodes
-   - Example: { "card": { "title": "Profile", "children": [ ... ] } }
+     - subtitle: string
+     - gradient: "BLUE_PURPLE", "ORANGE_RED", "GREEN_TEAL"
+     - align: "CENTER", "LEFT"
+     - children: Array of Nodes (Buttons usually)
 
-5. "input"
+3. "text"
+   - Props:
+     - content: string
+     - variant: "H1", "H2", "H3", "BODY", "CAPTION", "CODE"
+     - color: "DEFAULT", "MUTED", "PRIMARY", "ACCENT", "DANGER", "SUCCESS"
+
+4. "button"
    - Props:
      - label: string
-     - placeholder: string
-     - inputType: "text", "email", "password"
+     - variant: "PRIMARY", "SECONDARY", "GHOST", "DANGER", "GLOW", "OUTLINE", "SOFT", "GRADIENT"
+     - icon: string (Lucide icon name)
+     - action: { "type": string, "payload": string }
 
-6. "stat"
+5. "card"
+   - Props:
+     - title: string
+     - variant: "DEFAULT", "GLASS", "NEON", "OUTLINED", "ELEVATED", "FROSTED"
+     - children: Array of Nodes
+
+6. "table"
+   - Props:
+     - headers: Array<string>
+     - rows: Array<Array<string | UINode>> (Can be simple strings or nested components like Badges)
+
+7. "stat"
    - Props:
      - label: string
      - value: string
      - trend: string
-     - trendDirection: "UP", "DOWN"
+     - trendDirection: "UP", "DOWN", "NEUTRAL"
 
-7. "chart"
+8. "progress"
+   - Props:
+     - label: string
+     - value: number (0-100)
+     - color: "BLUE", "GREEN", "ORANGE", "RED"
+
+9. "alert"
    - Props:
      - title: string
-     - type: "BAR", "LINE", "AREA"
-     - color: string (Hex)
-     - data: Array<{ name: string, value: number }>
+     - description: string
+     - variant: "INFO", "SUCCESS", "WARNING", "ERROR"
 
-8. "separator"
-   - Props: {} (Empty object)
+10. "avatar"
+    - Props:
+      - initials: string
+      - src: string (URL)
+      - status: "ONLINE", "OFFLINE", "BUSY"
+
+11. "chart" (Recharts)
+    - Props:
+      - title: string
+      - type: "BAR", "LINE", "AREA"
+      - color: string (Hex)
+      - data: Array<{ name: string, value: number }>
 `;
 
 export const FEW_SHOT_EXAMPLES = `
-EXAMPLE 1: User asks for "A simple login form"
+EXAMPLE 1: User asks "Show me a modern landing page hero"
 Response:
 {
-  "container": {
-    "layout": "COL",
-    "padding": true,
-    "className": "items-center justify-center h-full",
+  "hero": {
+    "title": "Build the Future",
+    "subtitle": "Deploy your AI agents in seconds with our distributed infrastructure.",
+    "gradient": "BLUE_PURPLE",
+    "align": "CENTER",
     "children": [
-      {
-        "card": {
-          "title": "Welcome Back",
-          "variant": "GLASS",
+      { 
+        "container": {
+          "layout": "ROW",
+          "gap": "GAP_MD",
           "children": [
-            { "input": { "label": "Email", "placeholder": "user@example.com", "inputType": "email" } },
-            { "input": { "label": "Password", "placeholder": "****", "inputType": "password" } },
-            {
-              "container": {
-                "layout": "ROW",
-                "gap": "GAP_SM",
-                "className": "justify-end mt-4",
-                "children": [
-                  { "button": { "label": "Sign In", "variant": "PRIMARY", "action": { "type": "SUBMIT_LOGIN", "payload": "login" } } }
-                ]
-              }
-            }
+            { "button": { "label": "Get Started", "variant": "GRADIENT", "icon": "Rocket", "action": { "type": "NAVIGATE", "payload": "/signup" } } },
+            { "button": { "label": "Documentation", "variant": "OUTLINE", "icon": "Book", "action": { "type": "NAVIGATE", "payload": "/docs" } } }
           ]
         }
       }
@@ -101,23 +110,81 @@ Response:
   }
 }
 
-EXAMPLE 2: User asks for "KPI Dashboard"
+EXAMPLE 2: User asks "System Health Dashboard"
 Response:
 {
   "container": {
     "layout": "COL",
     "gap": "GAP_LG",
     "padding": true,
+    "background": "SURFACE",
     "children": [
-      { "text": { "content": "Executive Overview", "variant": "H1" } },
+      {
+        "container": {
+          "layout": "ROW",
+          "className": "justify-between",
+          "children": [
+            { "text": { "content": "System Status", "variant": "H1" } },
+            { 
+              "container": {
+                 "layout": "ROW",
+                 "gap": "GAP_SM",
+                 "children": [
+                    { "text": { "content": "Last updated: Just now", "variant": "CAPTION", "color": "MUTED" } },
+                    { "avatar": { "initials": "AD", "status": "ONLINE" } }
+                 ]
+              }
+            }
+          ]
+        }
+      },
       {
         "container": {
           "layout": "GRID",
           "gap": "GAP_MD",
           "children": [
-            { "stat": { "label": "Revenue", "value": "$124k", "trend": "+14%", "trendDirection": "UP" } },
-            { "stat": { "label": "Users", "value": "1.2k", "trend": "+5%", "trendDirection": "UP" } },
-            { "stat": { "label": "Churn", "value": "2.1%", "trend": "-0.5%", "trendDirection": "DOWN" } }
+            { "stat": { "label": "Server Uptime", "value": "99.99%", "trend": "+0.01%", "trendDirection": "UP" } },
+            { "stat": { "label": "Active Sessions", "value": "14,205", "trend": "+12%", "trendDirection": "UP" } },
+            { "stat": { "label": "Error Rate", "value": "0.02%", "trend": "-50%", "trendDirection": "DOWN" } }
+          ]
+        }
+      },
+      {
+        "container": {
+          "layout": "GRID",
+          "gap": "GAP_MD",
+          "className": "grid-cols-1 md:grid-cols-3",
+          "children": [
+             {
+               "card": {
+                 "title": "Traffic Volume",
+                 "variant": "ELEVATED",
+                 "children": [
+                   { "chart": { "type": "AREA", "color": "#8b5cf6", "data": [{ "name": "10am", "value": 400 }, { "name": "11am", "value": 600 }, { "name": "12pm", "value": 550 }, { "name": "1pm", "value": 900 }] } }
+                 ]
+               }
+             },
+             {
+               "card": {
+                 "title": "Storage Usage",
+                 "variant": "OUTLINED",
+                 "children": [
+                   { "progress": { "label": "Database A", "value": 75, "color": "BLUE" } },
+                   { "progress": { "label": "Database B", "value": 45, "color": "GREEN" } },
+                   { "progress": { "label": "Cache Cluster", "value": 90, "color": "ORANGE" } }
+                 ]
+               }
+             },
+             {
+               "card": {
+                 "title": "Recent Alerts",
+                 "variant": "FROSTED",
+                 "children": [
+                   { "alert": { "title": "Backup Complete", "description": "Daily snapshot finished successfully.", "variant": "SUCCESS" } },
+                   { "alert": { "title": "High Latency", "description": "us-east-1 detected 200ms lag.", "variant": "WARNING" } }
+                 ]
+               }
+             }
           ]
         }
       }
@@ -142,4 +209,5 @@ Your output must be strictly machine-readable JSON that maps 1:1 to a Protobuf s
 3. **Enums are Strings:** Use the string name of the enum value (e.g., "GAP_MEDIUM", "PRIMARY", "ROW").
 4. **Recursive Structure:** Always wrap children in a \`children\` array inside a \`container\` or \`card\`.
 5. **No IDs:** Do not generate IDs. The client handles indexing.
+6. **Data Injection:** You ARE the backend. You must generate realistic mock data for Charts, Tables, and Stats. Do not leave them empty.
 `;
