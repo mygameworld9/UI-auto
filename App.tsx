@@ -9,48 +9,49 @@ import {
 } from 'lucide-react';
 
 /**
- * Immutable Deep Set Utility (Production Ready)
+ * Immutable Deep Set Utility (Recursive & Type-Safe)
  * Safely updates a nested value within an object tree using dot-notation path,
  * ensuring structural sharing/immutability for React state updates.
  */
-const setByPath = (obj: any, path: string, value: any): any => {
-  if (!obj || typeof obj !== 'object') return obj;
-  if (!path) return value;
+function setByPath<T>(obj: T, path: string, value: any): T {
+  // If path is empty, we can't patch "inside", so we return value as the new root
+  if (!path) return value as unknown as T;
 
   const segments = path.split('.');
-  
-  // Determine root clone type
-  const root = Array.isArray(obj) ? [...obj] : { ...obj };
-  let current = root;
 
-  for (let i = 0; i < segments.length - 1; i++) {
-    const key = segments[i];
-    const nextKey = segments[i + 1];
-
-    // Check if the current key exists
-    const existingVal = current[key];
-    
-    // Determine if we need to clone an array or an object
-    // If it doesn't exist, we guess type based on next key (numeric -> array)
-    let nextVal;
-    if (existingVal && typeof existingVal === 'object') {
-      nextVal = Array.isArray(existingVal) ? [...existingVal] : { ...existingVal };
-    } else {
-      // Auto-vivification for missing paths
-      nextVal = !isNaN(Number(nextKey)) ? [] : {};
+  const update = (current: any, depth: number): any => {
+    // 1. Base Case: Reached the target key
+    if (depth === segments.length) {
+      return value;
     }
 
-    // Assign and move down
-    current[key] = nextVal;
-    current = current[key];
-  }
+    const key = segments[depth];
+    
+    // 2. Clone the current level
+    // We determine if 'current' is an array or object to clone it correctly.
+    // If 'current' is null/undefined (auto-vivification), we check the key to guess type.
+    let clone: any;
+    
+    if (Array.isArray(current)) {
+      clone = [...current];
+    } else if (current && typeof current === 'object') {
+      clone = { ...current };
+    } else {
+      // Auto-vivification: 
+      // If the key is numeric, assume we are building an array.
+      // Otherwise, assume an object.
+      const isIndex = !isNaN(Number(key));
+      clone = isIndex ? [] : {};
+    }
 
-  // Set the final value
-  const lastKey = segments[segments.length - 1];
-  current[lastKey] = value;
+    // 3. Recursive Step: Assign the result of the update to the clone's key
+    clone[key] = update(current ? current[key] : undefined, depth + 1);
 
-  return root;
-};
+    return clone;
+  };
+
+  return update(obj, 0) as T;
+}
 
 const App = () => {
   // State
@@ -69,7 +70,7 @@ const App = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, loading, streamingNode]);
 
-  // 3.2 Action Protocol & Local State Patch (Implemented)
+  // 3.2 Action Protocol & Local State Patch
   const handleAction = (action: UIAction) => {
     // 1. Handle State Patching
     if (action.type === 'PATCH_STATE' && action.path) {
@@ -80,7 +81,6 @@ const App = () => {
         }
 
         // CASE B: User is interacting with a finalized node in the history
-        // We find the most recent message that contains a UI and patch it.
         setMessages((prevMessages) => {
             const newMessages = [...prevMessages];
             // Search backwards for the last message with a UI payload
@@ -105,7 +105,6 @@ const App = () => {
     }
 
     // 2. Handle System Actions (Logging / Navigation fallbacks)
-    console.log("Action Triggered:", action);
     const responseText = `Action Executed: ${action.type} (Payload: ${JSON.stringify(action.payload)})`;
     setMessages(prev => [...prev, { role: 'system', text: responseText }]);
   };
