@@ -2,9 +2,6 @@ import { GoogleGenAI } from "@google/genai";
 import { COMPONENT_SPECS, SYSTEM_INSTRUCTION, FEW_SHOT_EXAMPLES } from "../constants";
 import { UserContext, UINode } from "../types";
 
-// Initialize Gemini
-const genAI = new GoogleGenAI({ apiKey: process.env.API_KEY || '' });
-
 // 2.1 & 2.2 Constructing the Prompt with Context
 const buildPrompt = (userInput: string, context: UserContext): string => {
   return `
@@ -29,6 +26,10 @@ const buildPrompt = (userInput: string, context: UserContext): string => {
 
 export const generateUI = async (prompt: string, context: UserContext): Promise<UINode> => {
   try {
+    // Initialize Gemini inside the function to ensure process.env.API_KEY is fresh
+    // This fixes issues when the user switches models or API keys in the environment
+    const genAI = new GoogleGenAI({ apiKey: process.env.API_KEY || '' });
+
     const fullPrompt = buildPrompt(prompt, context);
 
     const response = await genAI.models.generateContent({
@@ -57,7 +58,7 @@ export const generateUI = async (prompt: string, context: UserContext): Promise<
         children: [
           {
             text: { 
-              content: "Failed to generate UI. Please try again.", 
+              content: "Failed to generate UI. Please check your API Key or try again.", 
               variant: 'BODY', 
               color: 'DANGER' 
             }
