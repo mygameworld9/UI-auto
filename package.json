@@ -15,7 +15,7 @@
     "react-dom": "^19.2.0",
     "recharts": "^3.5.0",
     "zod": "^3.22.4",
-    "canvas-confetti": "1.9.2"
+    "canvas-confetti": "^1.9.2"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",
