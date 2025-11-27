@@ -2,6 +2,8 @@
 export interface UIAction {
   type: string;
   payload?: any;
+  // For local state updates
+  path?: string; // Dot notation path e.g. "0.children.1.input.value"
 }
 
 // The Node is a loose object where the KEY is the component type

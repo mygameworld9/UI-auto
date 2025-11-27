@@ -1,10 +1,11 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { generateUI } from './services/geminiService';
+import { generateUIStream } from './services/geminiService';
+import { parsePartialJson } from './services/streamParser';
 import DynamicRenderer from './components/DynamicRenderer';
 import { UINode, UserContext, UIAction } from './types';
 import { INITIAL_CONTEXT } from './constants';
 import { 
-  Bot, Send, User, Sparkles, Smartphone, Monitor, Shield, Zap, Box, Terminal, ArrowUp
+  Send, User, Sparkles, Smartphone, Monitor, Shield, Zap, Box, Terminal, ArrowUp
 } from 'lucide-react';
 
 const App = () => {
@@ -12,6 +13,8 @@ const App = () => {
   const [context, setContext] = useState<UserContext>(INITIAL_CONTEXT);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
+  const [streamingNode, setStreamingNode] = useState<UINode | null>(null);
+  
   const [messages, setMessages] = useState<Array<{role: string, text: string, ui?: UINode}>>([
     { role: 'system', text: 'GenUI Studio is ready. Describe a UI component, dashboard, or layout to generate it instantly.' }
   ]);
@@ -20,10 +23,19 @@ const App = () => {
   // Auto-scroll to bottom of chat
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, loading]);
+  }, [messages, loading, streamingNode]);
 
+  // 3.2 Action Protocol & Local State Patch
   const handleAction = (action: UIAction) => {
     console.log("Action Triggered:", action);
+    
+    if (action.type === 'PATCH_STATE' && action.path) {
+        // Implement complex deep patch logic here if needed
+        // For now, we just log it as the focus is on Streaming
+        console.log("Local State Patch requested:", action.path, action.payload);
+        return;
+    }
+
     const responseText = `Action Executed: ${action.type} (Payload: ${JSON.stringify(action.payload)})`;
     setMessages(prev => [...prev, { role: 'system', text: responseText }]);
   };
@@ -41,17 +53,47 @@ const App = () => {
     const userMsg = input;
     setInput('');
     setLoading(true);
+    setStreamingNode(null); // Reset streaming buffer
 
     setMessages(prev => [...prev, { role: 'user', text: userMsg }]);
 
-    const uiTree = await generateUI(userMsg, context);
+    // --- STREAMING LOGIC START ---
+    let rawAccumulated = "";
+    
+    try {
+        const stream = generateUIStream(userMsg, context);
+        
+        for await (const chunk of stream) {
+            rawAccumulated += chunk;
+            
+            // 1. Partial Parse: Attempt to fix and parse the incomplete JSON
+            const partialUI = parsePartialJson(rawAccumulated);
+            
+            // 2. Update UI Buffer: Only update if we got a valid object
+            if (partialUI && typeof partialUI === 'object') {
+                setStreamingNode(partialUI);
+            }
+        }
 
-    setLoading(false);
-    setMessages(prev => [...prev, { 
-      role: 'assistant', 
-      text: '', // Empty text for cleaner look
-      ui: uiTree
-    }]);
+        // Finalize
+        const finalUI = parsePartialJson(rawAccumulated);
+        setMessages(prev => [...prev, { 
+            role: 'assistant', 
+            text: '', 
+            ui: finalUI || streamingNode
+        }]);
+
+    } catch (e) {
+        console.error("Streaming failed", e);
+        setMessages(prev => [...prev, { 
+            role: 'system', 
+            text: 'Error rendering stream. See console.' 
+        }]);
+    } finally {
+        setLoading(false);
+        setStreamingNode(null);
+    }
+    // --- STREAMING LOGIC END ---
   };
 
   return (
@@ -70,8 +112,8 @@ const App = () => {
 
         <div className="flex items-center gap-4">
             <div className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-full bg-zinc-900 border border-white/5 text-xs font-medium text-slate-400">
-                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                Gemini 3.0 Pro Active
+                <span className={`w-2 h-2 rounded-full ${loading ? 'bg-amber-500 animate-ping' : 'bg-emerald-500'} `}></span>
+                Gemini 3.0 Pro {loading ? 'Streaming...' : 'Ready'}
             </div>
             <button 
               onClick={handleKeySelection}
@@ -155,42 +197,8 @@ const App = () => {
                     {/* UI Render Area (The "Canvas") */}
                     {msg.ui && (
                         <div className="w-full flex justify-center py-6">
-                            <div 
-                                className={`transition-all duration-700 ease-in-out relative
-                                    ${context.device === 'mobile' ? 'w-[375px]' : 'w-full'}
-                                `}
-                            >
-                                {/* Device Label */}
-                                <div className="absolute -top-8 left-1/2 -translate-x-1/2 text-[10px] font-mono text-slate-500 tracking-widest uppercase bg-zinc-950 px-2">
-                                    {context.device === 'mobile' ? 'iPhone 15 Viewport' : 'Desktop Viewport'}
-                                </div>
-
-                                <div className="bg-zinc-900 rounded-xl overflow-hidden shadow-2xl ring-1 ring-white/10 relative group-ui">
-                                    {/* Mock Browser Header */}
-                                    <div className="h-9 bg-zinc-950/50 border-b border-white/5 flex items-center px-4 gap-2">
-                                        <div className="flex gap-1.5">
-                                            <div className="w-2.5 h-2.5 rounded-full bg-zinc-700 group-ui-hover:bg-red-500/50 transition-colors" />
-                                            <div className="w-2.5 h-2.5 rounded-full bg-zinc-700 group-ui-hover:bg-yellow-500/50 transition-colors" />
-                                            <div className="w-2.5 h-2.5 rounded-full bg-zinc-700 group-ui-hover:bg-green-500/50 transition-colors" />
-                                        </div>
-                                        <div className="mx-auto w-1/2 h-5 bg-zinc-800/50 rounded flex items-center justify-center">
-                                            <span className="text-[9px] text-zinc-600 font-mono">localhost:3000</span>
-                                        </div>
-                                    </div>
-                                    
-                                    {/* Component Renderer */}
-                                    <div className={`
-                                        bg-slate-950
-                                        ${context.device === 'mobile' ? 'min-h-[667px]' : 'min-h-[500px]'}
-                                        overflow-hidden
-                                    `}>
-                                        <DynamicRenderer node={msg.ui} onAction={handleAction} />
-                                    </div>
-                                </div>
-                                
-                                {/* Decor effects */}
-                                <div className="absolute -inset-4 bg-gradient-to-r from-indigo-500/10 to-purple-500/10 rounded-2xl blur-2xl -z-10 opacity-50" />
-                            </div>
+                             {/* Re-use the device wrapper logic */}
+                             <DeviceWrapper context={context} node={msg.ui} onAction={handleAction} />
                         </div>
                     )}
                   </div>
@@ -199,7 +207,15 @@ const App = () => {
               </div>
             ))}
 
-            {loading && (
+            {/* LIVE STREAMING RENDER AREA */}
+            {loading && streamingNode && (
+                <div className="w-full flex justify-center py-6 animate-in fade-in duration-300">
+                    <DeviceWrapper context={context} node={streamingNode} onAction={handleAction} isStreaming={true} />
+                </div>
+            )}
+
+            {/* Loading Indicator (only if we haven't started streaming yet) */}
+            {loading && !streamingNode && (
                 <div className="flex justify-center py-12">
                    <div className="flex flex-col items-center gap-4">
                         <div className="relative">
@@ -208,12 +224,12 @@ const App = () => {
                             </div>
                             <div className="absolute inset-0 bg-indigo-500/20 blur-xl animate-pulse" />
                         </div>
-                        <span className="text-xs font-mono text-slate-500 animate-pulse">GENERATING ARCHITECTURE...</span>
+                        <span className="text-xs font-mono text-slate-500 animate-pulse">CONNECTING STREAM...</span>
                    </div>
                 </div>
             )}
             
-            <div ref={messagesEndRef} className="h-32" /> {/* Spacer for floating input */}
+            <div ref={messagesEndRef} className="h-32" /> 
         </div>
       </main>
 
@@ -246,7 +262,7 @@ const App = () => {
                     </div>
                 </div>
                 <div className="mt-3 text-center flex justify-center gap-6">
-                     <span className="text-[10px] text-slate-600 font-medium">Prompt Engineering: Enabled</span>
+                     <span className="text-[10px] text-slate-600 font-medium">Stream Mode: Enabled</span>
                      <span className="text-[10px] text-slate-600 font-medium">Model: Gemini 3.0 Pro</span>
                 </div>
             </form>
@@ -256,5 +272,47 @@ const App = () => {
     </div>
   );
 };
+
+// Helper Component for the Device Frame
+const DeviceWrapper = ({ context, node, onAction, isStreaming }: any) => (
+    <div 
+        className={`transition-all duration-700 ease-in-out relative
+            ${context.device === 'mobile' ? 'w-[375px]' : 'w-full'}
+            ${isStreaming ? 'opacity-80' : 'opacity-100'}
+        `}
+    >
+        {/* Device Label */}
+        <div className="absolute -top-8 left-1/2 -translate-x-1/2 text-[10px] font-mono text-slate-500 tracking-widest uppercase bg-zinc-950 px-2 flex items-center gap-2">
+            {context.device === 'mobile' ? 'iPhone 15 Viewport' : 'Desktop Viewport'}
+            {isStreaming && <span className="w-1.5 h-1.5 bg-amber-500 rounded-full animate-pulse" />}
+        </div>
+
+        <div className="bg-zinc-900 rounded-xl overflow-hidden shadow-2xl ring-1 ring-white/10 relative group-ui">
+            {/* Mock Browser Header */}
+            <div className="h-9 bg-zinc-950/50 border-b border-white/5 flex items-center px-4 gap-2">
+                <div className="flex gap-1.5">
+                    <div className="w-2.5 h-2.5 rounded-full bg-zinc-700 group-ui-hover:bg-red-500/50 transition-colors" />
+                    <div className="w-2.5 h-2.5 rounded-full bg-zinc-700 group-ui-hover:bg-yellow-500/50 transition-colors" />
+                    <div className="w-2.5 h-2.5 rounded-full bg-zinc-700 group-ui-hover:bg-green-500/50 transition-colors" />
+                </div>
+                <div className="mx-auto w-1/2 h-5 bg-zinc-800/50 rounded flex items-center justify-center">
+                    <span className="text-[9px] text-zinc-600 font-mono">localhost:3000</span>
+                </div>
+            </div>
+            
+            {/* Component Renderer */}
+            <div className={`
+                bg-slate-950
+                ${context.device === 'mobile' ? 'min-h-[667px]' : 'min-h-[500px]'}
+                overflow-hidden
+            `}>
+                <DynamicRenderer node={node} onAction={onAction} />
+            </div>
+        </div>
+        
+        {/* Decor effects */}
+        <div className="absolute -inset-4 bg-gradient-to-r from-indigo-500/10 to-purple-500/10 rounded-2xl blur-2xl -z-10 opacity-50" />
+    </div>
+);
 
 export default App;

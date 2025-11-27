@@ -1,6 +1,6 @@
 import { GoogleGenAI } from "@google/genai";
 import { COMPONENT_SPECS, SYSTEM_INSTRUCTION, FEW_SHOT_EXAMPLES } from "../constants";
-import { UserContext, UINode } from "../types";
+import { UserContext } from "../types";
 
 // 2.1 & 2.2 Constructing the Prompt with Context
 const buildPrompt = (userInput: string, context: UserContext): string => {
@@ -21,18 +21,19 @@ const buildPrompt = (userInput: string, context: UserContext): string => {
 
     INSTRUCTIONS:
     Generate the JSON UI Tree. Ensure layout adapts to ${context.device}.
+    Do NOT output Markdown. Output raw JSON.
   `;
 };
 
-export const generateUI = async (prompt: string, context: UserContext): Promise<UINode> => {
+// Changed return type to AsyncGenerator to yield text chunks
+export async function* generateUIStream(prompt: string, context: UserContext): AsyncGenerator<string, void, unknown> {
+  // Initialize Gemini inside the function to ensure process.env.API_KEY is fresh
+  const genAI = new GoogleGenAI({ apiKey: process.env.API_KEY || '' });
+
+  const fullPrompt = buildPrompt(prompt, context);
+
   try {
-    // Initialize Gemini inside the function to ensure process.env.API_KEY is fresh
-    // This fixes issues when the user switches models or API keys in the environment
-    const genAI = new GoogleGenAI({ apiKey: process.env.API_KEY || '' });
-
-    const fullPrompt = buildPrompt(prompt, context);
-
-    const response = await genAI.models.generateContent({
+    const responseStream = await genAI.models.generateContentStream({
       model: 'gemini-3-pro-preview', 
       contents: fullPrompt,
       config: {
@@ -42,29 +43,30 @@ export const generateUI = async (prompt: string, context: UserContext): Promise<
       }
     });
 
-    const text = response.text;
-    if (!text) throw new Error("No response from Gemini");
-
-    const data = JSON.parse(text) as UINode;
-    return data;
+    for await (const chunk of responseStream) {
+      const text = chunk.text;
+      if (text) {
+        yield text;
+      }
+    }
 
   } catch (error) {
-    console.error("Generative UI Error:", error);
-    // Fallback UI matching new OneOf Schema
-    return {
+    console.error("Generative UI Stream Error:", error);
+    // Yield a valid error JSON so the parser can handle it gracefully
+    yield JSON.stringify({
       container: {
         layout: 'COL',
         padding: true,
         children: [
           {
-            text: { 
-              content: "Failed to generate UI. Please check your API Key or try again.", 
-              variant: 'BODY', 
-              color: 'DANGER' 
+            alert: { 
+              title: "Generation Error", 
+              description: "Failed to stream content. Please check your API Key.", 
+              variant: 'ERROR' 
             }
           }
         ]
       }
-    };
+    });
   }
-};
+}
