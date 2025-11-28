@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState } from 'react';
 import { DEFAULT_THEME, ThemeType } from './ui/theme';
 
@@ -17,7 +18,7 @@ const ThemeContext = createContext<ThemeContextType>({
   setIsGenerating: () => {}
 });
 
-export const ThemeProvider = ({ children }: { children: React.ReactNode }) => {
+export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [theme, setInternalTheme] = useState<ThemeType>(DEFAULT_THEME);
   const [isGenerating, setIsGenerating] = useState(false);
 

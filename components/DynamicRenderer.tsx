@@ -16,7 +16,7 @@ interface RendererProps {
 }
 
 interface ErrorBoundaryProps {
-  children: React.ReactNode;
+  children?: React.ReactNode; // Made optional to satisfy strict JSX checks
   fallback?: React.ReactNode;
   node: UINode;
   path: string;
@@ -29,10 +29,8 @@ interface ErrorBoundaryState {
 }
 
 class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
-  constructor(props: ErrorBoundaryProps) {
-    super(props);
-    this.state = { hasError: false, error: null };
-  }
+  // Explicitly declare state to satisfy TS
+  public state: ErrorBoundaryState = { hasError: false, error: null };
 
   static getDerivedStateFromError(error: Error): ErrorBoundaryState {
     return { hasError: true, error };

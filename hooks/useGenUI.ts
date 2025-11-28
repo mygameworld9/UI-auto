@@ -1,5 +1,5 @@
 
-import { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { UINode, UserContext, UIAction } from '../types';
 import { INITIAL_CONTEXT } from '../constants';
 import { generateUIStream, refineComponent, fixComponent } from '../services/geminiService';
@@ -171,10 +171,8 @@ export const useGenUI = () => {
     e.preventDefault();
     if (!input.trim() || loading) return;
 
-    if (!config.apiKey) {
-      setMessages(prev => [...prev, { role: 'system', text: '⚠️ Please configure your API Key in Settings.' }]);
-      return;
-    }
+    // NOTE: API Key is now handled via process.env.API_KEY in the service layer.
+    // We do not check it here in client state.
 
     const userMsg = input;
     setInput('');
