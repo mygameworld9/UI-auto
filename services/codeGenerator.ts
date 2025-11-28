@@ -1,3 +1,4 @@
+
 import { UINode } from "../types";
 import { THEME } from "../components/ui/theme";
 
@@ -10,16 +11,16 @@ interface GenContext {
 // Helper to indent code
 const indent = (depth: number) => '  '.repeat(depth);
 
-// Helper to escape strings
-const safeStr = (s: any) => JSON.stringify(s);
+// Safe property access utility for Theme
+const getThemeProp = (obj: any, key: string, fallback: any) => {
+  return (obj && obj[key]) ? obj[key] : fallback;
+};
 
 /* -------------------------------------------------------------------------- */
 /*                               IMPORT MANAGER                               */
 /* -------------------------------------------------------------------------- */
 
 const addImport = (ctx: GenContext, lib: string, item: string) => {
-  // Simple heuristic to manage imports string construction later
-  // We'll store them as "lib:item" strings in the Set for now
   ctx.imports.add(`${lib}:${item}`);
 };
 
@@ -29,20 +30,26 @@ const addImport = (ctx: GenContext, lib: string, item: string) => {
 
 const generateChildren = (children: UINode[] | undefined, ctx: GenContext): string => {
   if (!children || !Array.isArray(children) || children.length === 0) return '';
-  return children.map(child => generateNode(child, { ...ctx, depth: ctx.depth + 1 })).join('\n');
+  return children
+    .map(child => generateNode(child, { ...ctx, depth: ctx.depth + 1 }))
+    .filter(str => str.length > 0) // Clean up empty strings from skipped nodes
+    .join('\n');
 };
 
 const generateContainer = (props: any, ctx: GenContext): string => {
   const { layout = 'COL', gap = 'GAP_MD', padding, background = 'DEFAULT', bgImage, className = '', children } = props;
 
-  const layoutClass = (THEME.container.layouts as any)[layout] || THEME.container.layouts.COL;
-  const gapClass = (THEME.container.gaps as any)[gap] || THEME.container.gaps.GAP_MD;
-  const bgClass = bgImage ? '' : ((THEME.container.backgrounds as any)[background] || THEME.container.backgrounds.DEFAULT);
+  const layoutClass = getThemeProp(THEME.container.layouts, layout, THEME.container.layouts.COL);
+  const gapClass = getThemeProp(THEME.container.gaps, gap, THEME.container.gaps.GAP_MD);
+  
+  // Resolve tokens immediately
+  const bgClass = bgImage ? '' : getThemeProp(THEME.container.backgrounds, background, THEME.container.backgrounds.DEFAULT);
   const padClass = padding ? 'p-6 md:p-8' : '';
   
+  // Combine classes, removing extra spaces
   const classes = `flex w-full ${layoutClass} ${gapClass} ${padClass} ${bgClass} ${className} relative overflow-hidden`.replace(/\s+/g, ' ').trim();
+  
   const styleProp = bgImage ? ` style={{ backgroundImage: 'url(${bgImage})', backgroundSize: 'cover', backgroundPosition: 'center' }}` : '';
-
   const childrenJSX = generateChildren(children, ctx);
 
   if (bgImage) {
@@ -62,19 +69,13 @@ ${indent(ctx.depth)}</div>`;
 const generateText = (props: any, ctx: GenContext): string => {
   const { content, variant = 'BODY', color = 'DEFAULT', font = 'SANS' } = props;
   
-  const styleClass = (THEME.typography.variants as any)[variant] || THEME.typography.variants.BODY;
-  const colorClass = (THEME.typography.colors as any)[color] || THEME.typography.colors.DEFAULT;
-  const fontClass = (THEME.typography.fonts as any)[font] || THEME.typography.fonts.SANS;
+  const styleClass = getThemeProp(THEME.typography.variants, variant, THEME.typography.variants.BODY);
+  const colorClass = getThemeProp(THEME.typography.colors, color, THEME.typography.colors.DEFAULT);
+  const fontClass = getThemeProp(THEME.typography.fonts, font, THEME.typography.fonts.SANS);
 
   let Tag = 'div';
-  if (variant === 'H1') Tag = 'h1';
-  if (variant === 'H2') Tag = 'h2';
-  if (variant === 'H3') Tag = 'h3';
+  if (['H1', 'H2', 'H3'].includes(variant)) Tag = variant.toLowerCase();
   if (variant === 'CODE') Tag = 'code';
-
-  // Handling Google Fonts logic if strictly needed, but here we assume Tailwind classes or inline styles
-  // The theme.ts uses arbitrary values for fonts e.g. font-['Playfair_Display']
-  // We'll trust the class string from theme.ts
 
   return `${indent(ctx.depth)}<${Tag} className="${styleClass} ${colorClass} ${fontClass}">
 ${indent(ctx.depth + 1)}${content}
@@ -83,7 +84,7 @@ ${indent(ctx.depth)}</${Tag}>`;
 
 const generateButton = (props: any, ctx: GenContext): string => {
   const { label, variant = 'PRIMARY', icon } = props;
-  const variantClass = (THEME.button.variants as any)[variant] || THEME.button.variants.PRIMARY;
+  const variantClass = getThemeProp(THEME.button.variants, variant, THEME.button.variants.PRIMARY);
   const baseClass = THEME.button.base;
 
   if (icon) {
@@ -97,7 +98,7 @@ ${indent(ctx.depth)}</button>`;
 
 const generateCard = (props: any, ctx: GenContext): string => {
   const { title, variant = 'DEFAULT', children } = props;
-  const variantClass = (THEME.card.variants as any)[variant] || THEME.card.variants.DEFAULT;
+  const variantClass = getThemeProp(THEME.card.variants, variant, THEME.card.variants.DEFAULT);
   const baseClass = THEME.card.base;
 
   return `${indent(ctx.depth)}<div className="${baseClass} ${variantClass}">
@@ -112,7 +113,7 @@ ${indent(ctx.depth)}</div>`;
 
 const generateBadge = (props: any, ctx: GenContext): string => {
   const { label, color = 'BLUE' } = props;
-  const colorClass = (THEME.badge.colors as any)[color] || THEME.badge.colors.BLUE;
+  const colorClass = getThemeProp(THEME.badge.colors, color, THEME.badge.colors.BLUE);
   const baseClass = THEME.badge.base;
 
   return `${indent(ctx.depth)}<span className="${baseClass} ${colorClass}">
@@ -122,7 +123,7 @@ ${indent(ctx.depth)}</span>`;
 
 const generateAlert = (props: any, ctx: GenContext): string => {
   const { title, description, variant = 'INFO' } = props;
-  const variantClass = (THEME.alert.variants as any)[variant] || THEME.alert.variants.INFO;
+  const variantClass = getThemeProp(THEME.alert.variants, variant, THEME.alert.variants.INFO);
   const baseClass = THEME.alert.base;
 
   const iconMap: Record<string, string> = {
@@ -147,7 +148,7 @@ ${indent(ctx.depth)}</div>`;
 
 const generateProgress = (props: any, ctx: GenContext): string => {
   const { label, value = 0, color = 'BLUE' } = props;
-  const colorClass = (THEME.progress.colors as any)[color] || THEME.progress.colors.BLUE;
+  const colorClass = getThemeProp(THEME.progress.colors, color, THEME.progress.colors.BLUE);
 
   return `${indent(ctx.depth)}<div className="w-full space-y-3">
 ${indent(ctx.depth + 1)}<div className="flex justify-between text-xs font-bold uppercase tracking-wider text-slate-500">
@@ -165,26 +166,26 @@ ${indent(ctx.depth)}</div>`;
 
 const generateStat = (props: any, ctx: GenContext): string => {
   const { label, value, trend, trendDirection } = props;
+  
   const isUp = trendDirection === 'UP';
   const isDown = trendDirection === 'DOWN';
-
   let Icon = 'Minus';
   if (isUp) Icon = 'TrendingUp';
   if (isDown) Icon = 'TrendingDown';
   addImport(ctx, 'lucide-react', Icon);
 
-  const trendColor = isUp ? 'text-emerald-400 bg-emerald-500/10' : isDown ? 'text-red-400 bg-red-500/10' : 'text-slate-400 bg-slate-500/10';
+  const trendColor = isUp ? THEME.stat.trend.UP : isDown ? THEME.stat.trend.DOWN : THEME.stat.trend.NEUTRAL;
 
-  return `${indent(ctx.depth)}<div className="bg-zinc-900 p-6 rounded-2xl border border-zinc-800 hover:border-zinc-600 transition-colors group relative overflow-hidden">
-${indent(ctx.depth + 1)}<div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-${indent(ctx.depth + 2)}<div className="w-16 h-16 bg-gradient-to-br from-white to-transparent rounded-full blur-xl" />
+  return `${indent(ctx.depth)}<div className="${THEME.stat.base}">
+${indent(ctx.depth + 1)}<div className="${THEME.stat.decorator}">
+${indent(ctx.depth + 2)}<div className="${THEME.stat.decoratorBlur}" />
 ${indent(ctx.depth + 1)}</div>
 ${indent(ctx.depth + 1)}<div className="flex justify-between items-start mb-4 relative z-10">
-${indent(ctx.depth + 2)}<span className="text-sm font-medium text-slate-400 uppercase tracking-wide">${label}</span>
+${indent(ctx.depth + 2)}<span className="${THEME.stat.label}">${label}</span>
 ${indent(ctx.depth + 1)}</div>
 ${indent(ctx.depth + 1)}<div className="flex items-baseline gap-3 relative z-10">
-${indent(ctx.depth + 2)}<div className="text-3xl font-bold text-white tracking-tight">${value}</div>
-${trend ? `${indent(ctx.depth + 2)}<span className="text-xs font-bold px-2 py-0.5 rounded-full flex items-center ${trendColor}">
+${indent(ctx.depth + 2)}<div className="${THEME.stat.value}">${value}</div>
+${trend ? `${indent(ctx.depth + 2)}<span className="${THEME.stat.trend.base} ${trendColor}">
 ${indent(ctx.depth + 3)}<${Icon} className="w-3 h-3 mr-1" />
 ${indent(ctx.depth + 3)}${trend}
 ${indent(ctx.depth + 2)}</span>` : ''}
@@ -194,7 +195,7 @@ ${indent(ctx.depth)}</div>`;
 
 const generateAvatar = (props: any, ctx: GenContext): string => {
   const { initials, src, status } = props;
-  const statusColor = status ? (THEME.avatar.status as any)[status] || THEME.avatar.status.OFFLINE : '';
+  const statusColor = status ? getThemeProp(THEME.avatar.status, status, THEME.avatar.status.OFFLINE) : '';
 
   return `${indent(ctx.depth)}<div className="relative inline-block group">
 ${indent(ctx.depth + 1)}<div className="w-10 h-10 rounded-full overflow-hidden bg-zinc-800 flex items-center justify-center border border-zinc-700 ring-2 ring-transparent group-hover:ring-white/10 transition-all">
@@ -209,7 +210,7 @@ ${indent(ctx.depth)}</div>`;
 
 const generateHero = (props: any, ctx: GenContext): string => {
   const { title, subtitle, gradient = 'BLUE_PURPLE', align = 'CENTER', children } = props;
-  const gradientClass = (THEME.hero.gradients as any)[gradient] || THEME.hero.gradients.BLUE_PURPLE;
+  const gradientClass = getThemeProp(THEME.hero.gradients, gradient, THEME.hero.gradients.BLUE_PURPLE);
   const alignClass = align === 'LEFT' ? 'text-left items-start' : 'text-center items-center';
   const baseClass = THEME.hero.base;
 
@@ -228,7 +229,7 @@ ${indent(ctx.depth)}</div>`;
 
 const generateImage = (props: any, ctx: GenContext): string => {
   const { src, alt, caption, aspectRatio = 'VIDEO' } = props;
-  const ratioClass = (THEME.image.ratios as any)[aspectRatio] || THEME.image.ratios.VIDEO;
+  const ratioClass = getThemeProp(THEME.image.ratios, aspectRatio, THEME.image.ratios.VIDEO);
 
   return `${indent(ctx.depth)}<figure className="w-full flex flex-col gap-3 group">
 ${indent(ctx.depth + 1)}<div className="w-full overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900 ${ratioClass} relative">
@@ -245,18 +246,18 @@ ${indent(ctx.depth)}</figure>`;
 
 const generateInput = (props: any, ctx: GenContext): string => {
   const { label, placeholder, inputType = 'text' } = props;
-  return `${indent(ctx.depth)}<div className="flex flex-col gap-2 w-full group">
-${indent(ctx.depth + 1)}<label className="text-xs font-bold text-slate-500 uppercase tracking-wider transition-colors group-focus-within:text-indigo-400">${label}</label>
+  return `${indent(ctx.depth)}<div className="${THEME.input.base}">
+${indent(ctx.depth + 1)}<label className="${THEME.input.label}">${label}</label>
 ${indent(ctx.depth + 1)}<input 
 ${indent(ctx.depth + 2)}type="${inputType}"
-${indent(ctx.depth + 2)}className="w-full bg-zinc-900 border border-zinc-700 rounded-lg px-4 py-3 text-slate-100 placeholder-slate-600 focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 transition-all hover:border-zinc-600"
+${indent(ctx.depth + 2)}className="${THEME.input.field}"
 ${indent(ctx.depth + 2)}placeholder="${placeholder}"
 ${indent(ctx.depth + 1)}/>
 ${indent(ctx.depth)}</div>`;
 };
 
 const generateSeparator = (props: any, ctx: GenContext): string => {
-  return `${indent(ctx.depth)}<div className="h-px bg-zinc-800 my-8 w-full" />`;
+  return `${indent(ctx.depth)}<div className="${THEME.separator.base}" />`;
 };
 
 // Complex: Recharts
@@ -301,10 +302,9 @@ ${indent(ctx.depth + 1)}</div>
 ${indent(ctx.depth)}</div>`;
 };
 
-// Complex: Map (Visual Mock)
 const generateMap = (props: any, ctx: GenContext): string => {
   const { label, style = 'DARK', markers = [] } = props;
-  const theme = (THEME.map.styles as any)[style] || THEME.map.styles.DARK;
+  const theme = getThemeProp(THEME.map.styles, style, THEME.map.styles.DARK);
   addImport(ctx, 'lucide-react', 'Map');
 
   return `${indent(ctx.depth)}<div className="w-full h-72 rounded-xl overflow-hidden relative border border-zinc-700 group shadow-2xl">
@@ -330,30 +330,29 @@ ${indent(ctx.depth + 1)}</div>`;
 ${indent(ctx.depth)}</div>`;
 };
 
-// Complex: Table
 const generateTable = (props: any, ctx: GenContext): string => {
   const { headers, rows } = props;
   
   const headerJSX = headers?.map((h: string) => 
-    `${indent(ctx.depth + 4)}<th className="px-6 py-4 font-semibold tracking-wider">${h}</th>`
+    `${indent(ctx.depth + 4)}<th className="${THEME.table.header} px-6 py-4">${h}</th>`
   ).join('\n') || '';
 
   const rowsJSX = rows?.map((row: any[]) => 
-    `${indent(ctx.depth + 4)}<tr className="hover:bg-white/5 transition-colors border-b border-zinc-800/50 last:border-0">\n` +
+    `${indent(ctx.depth + 4)}<tr className="${THEME.table.row}">\n` +
     row.map((cell: any) => {
         if(typeof cell === 'object') {
              // Recursive cell rendering
              return `${indent(ctx.depth + 5)}<td className="px-6 py-4">\n${generateNode(cell, { ...ctx, depth: ctx.depth + 6 })}\n${indent(ctx.depth + 5)}</td>`;
         }
-        return `${indent(ctx.depth + 5)}<td className="px-6 py-4 text-slate-300">${cell}</td>`;
+        return `${indent(ctx.depth + 5)}<td className="${THEME.table.cell}">${cell}</td>`;
     }).join('\n') +
     `\n${indent(ctx.depth + 4)}</tr>`
   ).join('\n') || '';
 
-  return `${indent(ctx.depth)}<div className="w-full overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900/50">
+  return `${indent(ctx.depth)}<div className="${THEME.table.base}">
 ${indent(ctx.depth + 1)}<div className="overflow-x-auto">
 ${indent(ctx.depth + 2)}<table className="w-full text-sm text-left">
-${indent(ctx.depth + 3)}<thead className="text-xs uppercase bg-zinc-950/50 text-slate-400 border-b border-zinc-800">
+${indent(ctx.depth + 3)}<thead className="${THEME.table.header}">
 ${indent(ctx.depth + 4)}<tr>
 ${headerJSX}
 ${indent(ctx.depth + 4)}</tr>
@@ -366,11 +365,10 @@ ${indent(ctx.depth + 1)}</div>
 ${indent(ctx.depth)}</div>`;
 };
 
-// Complex: Accordion (Using HTML5 details/summary for dependency-free implementation)
 const generateAccordion = (props: any, ctx: GenContext): string => {
   const { items, variant = 'DEFAULT' } = props;
-  const containerClass = (THEME.accordion.container as any)[variant] || THEME.accordion.container.DEFAULT;
-  const itemClass = (THEME.accordion.item as any)[variant] || THEME.accordion.item.DEFAULT;
+  const containerClass = getThemeProp(THEME.accordion.container, variant, THEME.accordion.container.DEFAULT);
+  const itemClass = getThemeProp(THEME.accordion.item, variant, THEME.accordion.item.DEFAULT);
   
   addImport(ctx, 'lucide-react', 'ChevronDown');
 
@@ -436,10 +434,8 @@ export const generateReactCode = (rootNode: UINode): string => {
 
   addImport(importsCtx, 'react', 'React');
 
-  // Generate Body
   const jsxBody = generateNode(rootNode, importsCtx);
 
-  // Process Imports
   const importGroups: Record<string, Set<string>> = {};
   importsCtx.imports.forEach(imp => {
     const [lib, item] = imp.split(':');
@@ -457,7 +453,12 @@ export const generateReactCode = (rootNode: UINode): string => {
     importStatements += `import { ${Array.from(items).join(', ')} } from '${lib}';\n`;
   });
 
-  return `${importStatements}
+  return `/**
+ * Generated by GenUI Architect
+ * Tailwind CSS + React (Zero Runtime Dependencies)
+ */
+
+${importStatements}
 export default function GeneratedComponent() {
   return (
 ${jsxBody}

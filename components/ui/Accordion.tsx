@@ -1,9 +1,10 @@
+
 import React from 'react';
 import * as Lucide from 'lucide-react';
 import { RenderChildren } from './utils';
 import { THEME } from './theme';
 
-export const Accordion = ({ items, variant = 'DEFAULT', onAction }: any) => {
+export const Accordion = ({ items, variant = 'DEFAULT', onAction, path }: any) => {
   const [openIndex, setOpenIndex] = React.useState<number | null>(0);
 
   const toggle = (index: number) => {
@@ -20,6 +21,12 @@ export const Accordion = ({ items, variant = 'DEFAULT', onAction }: any) => {
       {items.map((item: any, i: number) => {
         const isOpen = openIndex === i;
         const content = Array.isArray(item.content) ? item.content : [];
+        // The items array is at `path.items`
+        // Item i is at `path.items.i`
+        // Content is at `path.items.i.content` - but RenderChildren expects UINode[] path?
+        // Wait, items is array of objects, not UINodes. item.content is UINode[].
+        // So path to content array is `path.items.${i}.content`.
+        const contentPath = path ? `${path}.items.${i}.content` : undefined;
         
         return (
           <div key={i} className={itemClass}>
@@ -37,7 +44,7 @@ export const Accordion = ({ items, variant = 'DEFAULT', onAction }: any) => {
             <div className={`grid transition-all duration-300 ease-in-out ${isOpen ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'}`}>
                 <div className="overflow-hidden">
                     <div className="px-6 pb-6 pt-2 border-t border-zinc-800/50 text-slate-400">
-                        <RenderChildren children={content} onAction={onAction} />
+                        <RenderChildren children={content} onAction={onAction} parentPath={contentPath} />
                     </div>
                 </div>
             </div>

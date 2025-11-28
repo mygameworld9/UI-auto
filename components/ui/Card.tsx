@@ -1,8 +1,9 @@
+
 import React from 'react';
 import { RenderChildren } from './utils';
 import { THEME } from './theme';
 
-export const Card = ({ children, title, variant = 'DEFAULT', onAction }: any) => {
+export const Card = ({ children, title, variant = 'DEFAULT', onAction, path }: any) => {
   const variantClass = THEME.card.variants[variant as keyof typeof THEME.card.variants] || THEME.card.variants.DEFAULT;
 
   return (
@@ -13,7 +14,7 @@ export const Card = ({ children, title, variant = 'DEFAULT', onAction }: any) =>
         </div>
       )}
       <div className="p-6 flex-1 flex flex-col gap-4">
-        <RenderChildren children={children} onAction={onAction} />
+        <RenderChildren children={children} onAction={onAction} parentPath={path} />
       </div>
     </div>
   );

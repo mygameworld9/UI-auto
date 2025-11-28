@@ -69,7 +69,7 @@ export const THEME = {
     gaps: { 
       GAP_SM: 'gap-3', 
       GAP_MD: 'gap-6', 
-      GAP_LG: 'gap-8',
+      GAP_LG: 'gap-8', 
       GAP_XL: 'gap-12'
     },
     backgrounds: {
@@ -92,6 +92,49 @@ export const THEME = {
       ELEVATED: 'bg-zinc-800 shadow-2xl shadow-black/50 border-t border-white/5',
       FROSTED: 'bg-white/5 backdrop-blur-xl border border-white/5'
     }
+  },
+
+  // --------------------------------------------------------------------------
+  // STATS
+  // --------------------------------------------------------------------------
+  stat: {
+    base: "bg-zinc-900 p-6 rounded-2xl border border-zinc-800 hover:border-zinc-600 transition-colors group relative overflow-hidden",
+    label: "text-sm font-medium text-slate-400 uppercase tracking-wide",
+    value: "text-3xl font-bold text-white tracking-tight",
+    trend: {
+        base: "text-xs font-bold px-2 py-0.5 rounded-full flex items-center",
+        UP: "text-emerald-400 bg-emerald-500/10",
+        DOWN: "text-red-400 bg-red-500/10",
+        NEUTRAL: "text-slate-400 bg-slate-500/10"
+    },
+    decorator: "absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity",
+    decoratorBlur: "w-16 h-16 bg-gradient-to-br from-white to-transparent rounded-full blur-xl"
+  },
+
+  // --------------------------------------------------------------------------
+  // INPUTS
+  // --------------------------------------------------------------------------
+  input: {
+     base: "flex flex-col gap-2 w-full group",
+     label: "text-xs font-bold text-slate-500 uppercase tracking-wider transition-colors group-focus-within:text-indigo-400",
+     field: "w-full bg-zinc-900 border border-zinc-700 rounded-lg px-4 py-3 text-slate-100 placeholder-slate-600 focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 transition-all hover:border-zinc-600"
+  },
+
+  // --------------------------------------------------------------------------
+  // TABLES
+  // --------------------------------------------------------------------------
+  table: {
+    base: "w-full overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900/50",
+    header: "text-xs uppercase bg-zinc-950/50 text-slate-400 border-b border-zinc-800",
+    row: "hover:bg-white/5 transition-colors border-b border-zinc-800/50 last:border-0",
+    cell: "px-6 py-4 whitespace-nowrap text-slate-300"
+  },
+
+  // --------------------------------------------------------------------------
+  // SEPARATOR
+  // --------------------------------------------------------------------------
+  separator: {
+    base: "h-px bg-zinc-800 my-8 w-full"
   },
 
   // --------------------------------------------------------------------------

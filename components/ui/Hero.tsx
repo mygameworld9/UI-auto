@@ -1,14 +1,14 @@
+
 import React from 'react';
 import { RenderChildren } from './utils';
 import { THEME } from './theme';
 
-export const Hero = ({ title, subtitle, gradient = 'BLUE_PURPLE', align = 'CENTER', children, onAction }: any) => {
+export const Hero = ({ title, subtitle, gradient = 'BLUE_PURPLE', align = 'CENTER', children, onAction, path }: any) => {
   const gradientClass = THEME.hero.gradients[gradient as keyof typeof THEME.hero.gradients] || THEME.hero.gradients.BLUE_PURPLE;
   const alignClass = align === 'LEFT' ? 'text-left items-start' : 'text-center items-center';
 
   return (
     <div className={`${THEME.hero.base} ${alignClass} gap-8`}>
-      {/* Dynamic Background */}
       <div className={`absolute inset-0 bg-gradient-to-br ${gradientClass} opacity-40 blur-3xl`} />
       <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20" />
       
@@ -22,7 +22,7 @@ export const Hero = ({ title, subtitle, gradient = 'BLUE_PURPLE', align = 'CENTE
       </div>
 
       <div className="relative z-10 mt-6 flex gap-4">
-        <RenderChildren children={children} onAction={onAction} />
+        <RenderChildren children={children} onAction={onAction} parentPath={path} />
       </div>
     </div>
   );
