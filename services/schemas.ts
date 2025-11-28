@@ -35,9 +35,7 @@ export const UINodeSchema: z.ZodType<any> = z.lazy(() =>
     SeparatorNode,
     BentoContainerNode,
     BentoCardNode,
-    KanbanNode,
-    // Fallback for completely unknown nodes to prevent crash
-    z.record(z.string(), z.any()) 
+    KanbanNode
   ])
 );
 

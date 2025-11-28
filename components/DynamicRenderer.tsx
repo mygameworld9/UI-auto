@@ -84,6 +84,12 @@ const DynamicRenderer: React.FC<RendererProps> = ({ node, onAction, index = 0, p
          nodeKeys: Object.keys(node),
          raw: JSON.stringify(node).substring(0, 50) + '...'
        });
+       
+       return (
+        <div className="p-2 border border-yellow-500/50 text-yellow-500 text-xs">
+           ⚠️ Unknown: {Object.keys(node)[0]}
+        </div>
+       );
     }
     return null; 
   }
@@ -93,7 +99,11 @@ const DynamicRenderer: React.FC<RendererProps> = ({ node, onAction, index = 0, p
 
   // 3. Fallback
   if (!componentType) {
-    return null;
+    return (
+      <div className="p-2 border border-yellow-500/50 text-yellow-500 text-xs">
+        ⚠️ Unknown: {Object.keys(node)[0]}
+      </div>
+    );
   }
 
   // 4. Resolve Component & Props
