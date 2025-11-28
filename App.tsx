@@ -4,7 +4,7 @@ import DynamicRenderer from './components/DynamicRenderer';
 import { 
   User, Sparkles, Smartphone, Monitor, Shield, Zap, Settings, Terminal, 
   ArrowUp, Activity, Gauge, Code2, PenTool, MousePointer2, Palette,
-  PanelLeftClose, PanelLeft, Share2, ZoomIn, ZoomOut, RotateCcw, Rocket
+  PanelLeftClose, PanelLeft, Share2, ZoomIn, ZoomOut, RotateCcw
 } from 'lucide-react';
 import { CodeViewer } from './components/CodeViewer';
 import { SettingsDialog } from './components/SettingsDialog';
@@ -13,7 +13,6 @@ import { EditorProvider } from './components/EditorContext';
 import { ThemeProvider, useTheme } from './components/ThemeContext';
 import { generateTheme } from './services/themeAgent';
 import { UINode } from './types';
-import { openInStackBlitz } from './services/deployService';
 
 const App = () => {
   return (
@@ -31,11 +30,12 @@ const Workspace = () => {
   const [showSettings, setShowSettings] = useState(false);
   const [showCode, setShowCode] = useState(false);
   const [showSidebar, setShowSidebar] = useState(true);
-  const [isDeploying, setIsDeploying] = useState(false);
   
   // Calculate the active node to display on the stage
+  // Priority: Streaming Node -> Last Generated UI -> Null
   const activeNode = streamingNode || messages.slice().reverse().find(m => m.ui)?.ui || null;
 
+  // Intercept theme commands
   const handleCustomSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (input.startsWith('/theme')) {
@@ -56,19 +56,6 @@ const Workspace = () => {
        return;
     }
     actions.handleSubmit(e);
-  };
-
-  const handleDeploy = async () => {
-    if (!activeNode) return;
-    setIsDeploying(true);
-    try {
-      await openInStackBlitz(activeNode);
-    } catch (e) {
-      console.error(e);
-      alert("Failed to open StackBlitz");
-    } finally {
-      setIsDeploying(false);
-    }
   };
 
   return (
@@ -134,7 +121,11 @@ const Workspace = () => {
                       {msg.ui && (
                         <div className="mt-1 px-1">
                            <button 
-                              onClick={() => msg.ui && actions.restoreUI(msg.ui)}
+                              onClick={() => {
+                                // In a real app, this would revert the activeNode state to this msg.ui
+                                // For now, we rely on the latest, but this is a placeholder for "History Restore"
+                                alert("History restoration would happen here.");
+                              }}
                               className="text-[10px] flex items-center gap-1 text-slate-600 hover:text-indigo-400 transition-colors"
                            >
                               <RotateCcw className="w-3 h-3" /> Restore this version
@@ -235,14 +226,6 @@ const Workspace = () => {
               </div>
 
               <div className="absolute right-4 flex items-center gap-2">
-                 <button 
-                    onClick={handleDeploy}
-                    disabled={isDeploying || !activeNode}
-                    className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium border transition-all ${isDeploying ? 'bg-emerald-500/20 border-emerald-500/50 text-emerald-400' : 'bg-zinc-900 border-white/5 text-slate-400 hover:text-white hover:border-emerald-500/30 hover:bg-emerald-500/10'}`}
-                 >
-                    {isDeploying ? <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" /> : <Rocket className="w-4 h-4" />}
-                    <span className="hidden sm:inline">Launch</span>
-                 </button>
                  <button 
                     onClick={() => setShowCode(!showCode)}
                     className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium border transition-all ${showCode ? 'bg-indigo-500/10 border-indigo-500/30 text-indigo-300' : 'bg-zinc-900 border-white/5 text-slate-400 hover:text-white'}`}

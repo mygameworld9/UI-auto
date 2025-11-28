@@ -239,15 +239,9 @@ export const useGenUI = () => {
     }
   }, []);
 
-  const restoreUI = useCallback((node: UINode) => {
-    setStreamingNode(node);
-    setEditMode(false);
-    setMessages(prev => [...prev, { role: 'system', text: '⏪ UI State Restored from History' }]);
-  }, []);
-
   return {
     state: { context, input, loading, streamingNode, messages, metrics, editMode, selectedPath, config },
     refs: { messagesEndRef },
-    actions: { setContext, setInput, handleSubmit, handleAction, setEditMode, setSelectedPath, setConfig, fixNode, restoreUI }
+    actions: { setContext, setInput, handleSubmit, handleAction, setEditMode, setSelectedPath, setConfig, fixNode }
   };
 };
