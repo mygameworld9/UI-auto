@@ -10,6 +10,7 @@ import {
 import { telemetry } from './services/telemetry';
 import confetti from 'canvas-confetti';
 import { CodeViewer } from './components/CodeViewer';
+import { executeTool } from './services/toolService';
 
 /**
  * Immutable Deep Set Utility (Recursive & Type-Safe)
@@ -183,6 +184,93 @@ const App = () => {
     }
   };
 
+  /**
+   * RECURSIVE GENERATION LOOP (Supports Function Calling)
+   * 
+   * This function handles the conversation flow:
+   * 1. Calls Gemini with current prompt
+   * 2. Streams response
+   * 3. Checks for "tool_call"
+   * 4. If tool_call: Executes tool -> Updates prompt -> Recurses
+   * 5. If UI: Updates streaming buffer -> Finalizes
+   */
+  const handleGeneration = async (prompt: string, originalUserMsg: string) => {
+    let rawAccumulated = "";
+    let isToolCallDetected = false;
+    
+    try {
+        const stream = generateUIStream(prompt, context);
+        
+        for await (const chunk of stream) {
+            rawAccumulated += chunk;
+            
+            // 1. Partial Parse: Attempt to fix and parse the incomplete JSON
+            const partialUI = parsePartialJson(rawAccumulated);
+            
+            // 2. Tool Detection
+            // If the model starts outputting a tool call, we suppress UI rendering
+            if (partialUI?.tool_call) {
+                isToolCallDetected = true;
+                continue;
+            }
+
+            // 3. Update UI Buffer
+            if (partialUI && typeof partialUI === 'object' && !isToolCallDetected) {
+                setStreamingNode(partialUI);
+            }
+        }
+
+        // Final Parse
+        const finalResponse = parsePartialJson(rawAccumulated);
+
+        // CASE A: Handle Tool Call
+        if (finalResponse?.tool_call) {
+             const { name, arguments: args } = finalResponse.tool_call;
+             
+             // Feedback to User
+             setMessages(prev => [...prev, { 
+                 role: 'system', 
+                 text: `⚡ Orchestrating: ${name} with args ${JSON.stringify(args)}` 
+             }]);
+
+             // Execute Tool
+             const toolResult = await executeTool(name, args);
+
+             // Construct Next Prompt (Chain of Thought)
+             const nextPrompt = `
+ORIGINAL USER REQUEST: ${originalUserMsg}
+
+SYSTEM UPDATE - TOOL EXECUTION RESULT:
+Function '${name}' returned:
+${JSON.stringify(toolResult)}
+
+INSTRUCTIONS:
+Based on the tool result above, generate the appropriate UI component now.
+             `;
+             
+             // Recursive Call
+             await handleGeneration(nextPrompt, originalUserMsg);
+             return;
+        }
+
+        // CASE B: Handle UI Response (Finalize)
+        if (!isToolCallDetected && (finalResponse || rawAccumulated.trim())) {
+             setMessages(prev => [...prev, { 
+                 role: 'assistant', 
+                 text: '', 
+                 ui: finalResponse || streamingNode
+             }]);
+        }
+
+    } catch (e) {
+        console.error("Streaming failed", e);
+        setMessages(prev => [...prev, { 
+            role: 'system', 
+            text: 'Error rendering stream. See console.' 
+        }]);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!input.trim() || loading) return;
@@ -194,43 +282,11 @@ const App = () => {
 
     setMessages(prev => [...prev, { role: 'user', text: userMsg }]);
 
-    // --- STREAMING LOGIC START ---
-    let rawAccumulated = "";
-    
-    try {
-        const stream = generateUIStream(userMsg, context);
-        
-        for await (const chunk of stream) {
-            rawAccumulated += chunk;
-            
-            // 1. Partial Parse: Attempt to fix and parse the incomplete JSON
-            const partialUI = parsePartialJson(rawAccumulated);
-            
-            // 2. Update UI Buffer: Only update if we got a valid object
-            if (partialUI && typeof partialUI === 'object') {
-                setStreamingNode(partialUI);
-            }
-        }
+    // Trigger the recursive generation loop
+    await handleGeneration(userMsg, userMsg);
 
-        // Finalize
-        const finalUI = parsePartialJson(rawAccumulated);
-        setMessages(prev => [...prev, { 
-            role: 'assistant', 
-            text: '', 
-            ui: finalUI || streamingNode
-        }]);
-
-    } catch (e) {
-        console.error("Streaming failed", e);
-        setMessages(prev => [...prev, { 
-            role: 'system', 
-            text: 'Error rendering stream. See console.' 
-        }]);
-    } finally {
-        setLoading(false);
-        setStreamingNode(null);
-    }
-    // --- STREAMING LOGIC END ---
+    setLoading(false);
+    setStreamingNode(null);
   };
 
   return (
@@ -250,7 +306,7 @@ const App = () => {
         <div className="flex items-center gap-4">
             <div className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-full bg-zinc-900 border border-white/5 text-xs font-medium text-slate-400">
                 <span className={`w-2 h-2 rounded-full ${loading ? 'bg-amber-500 animate-ping' : 'bg-emerald-500'} `}></span>
-                Gemini 3.0 Pro {loading ? 'Streaming...' : 'Ready'}
+                Gemini 3.0 Pro {loading ? 'Thinking...' : 'Ready'}
             </div>
             <button 
               onClick={handleKeySelection}
@@ -315,8 +371,16 @@ const App = () => {
                    </div>
                 )}
 
-                {/* System / Assistant Message */}
-                {msg.role !== 'user' && (
+                {/* System Message (Tool Execution Logs) */}
+                {msg.role === 'system' && (
+                    <div className="w-full max-w-2xl flex items-center gap-3 py-2 px-4 rounded-lg bg-zinc-900/50 border border-zinc-800/50 text-xs font-mono text-indigo-400/80 animate-in fade-in slide-in-from-bottom-2">
+                        <Terminal className="w-3 h-3" />
+                        <span>{msg.text}</span>
+                    </div>
+                )}
+
+                {/* Assistant Message */}
+                {msg.role === 'assistant' && (
                   <div className="w-full flex flex-col gap-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
                     
                     {/* Text Response (if any) */}
@@ -361,7 +425,9 @@ const App = () => {
                             </div>
                             <div className="absolute inset-0 bg-indigo-500/20 blur-xl animate-pulse" />
                         </div>
-                        <span className="text-xs font-mono text-slate-500 animate-pulse">CONNECTING STREAM...</span>
+                        <span className="text-xs font-mono text-slate-500 animate-pulse">
+                            Processing...
+                        </span>
                    </div>
                 </div>
             )}

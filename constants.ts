@@ -284,4 +284,16 @@ You can make buttons trigger visual effects using the "action" prop with type "T
 - Confetti: { "action": { "type": "TRIGGER_EFFECT", "payload": { "effect": "CONFETTI" } } }
 - Snow:     { "action": { "type": "TRIGGER_EFFECT", "payload": { "effect": "SNOW" } } }
 Use these for celebrations, holiday themes, or high-impact user interactions.
+
+**AVAILABLE TOOLS (FUNCTION CALLING):**
+You have access to the following tools. If the user asks a question that requires real-time data or external knowledge, invoke a tool instead of generating a UI.
+
+1. \`get_weather(location: string)\`: Returns current temperature and condition.
+2. \`search_knowledge(query: string)\`: Returns summary from knowledge base (use for generic questions).
+3. \`get_stock_price(symbol: string)\`: Returns stock data.
+
+**TOOL CALLING FORMAT:**
+If you need to call a tool, output a JSON object with a single key "tool_call". DO NOT output a UI tree in this case.
+Example:
+{ "tool_call": { "name": "get_weather", "arguments": { "location": "Tokyo" } } }
 `;
