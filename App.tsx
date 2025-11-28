@@ -1,293 +1,14 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { generateUIStream } from './services/geminiService';
-import { parsePartialJson } from './services/streamParser';
+import React, { useState } from 'react';
 import DynamicRenderer from './components/DynamicRenderer';
-import { UINode, UserContext, UIAction } from './types';
-import { INITIAL_CONTEXT } from './constants';
 import { 
   User, Sparkles, Smartphone, Monitor, Shield, Zap, Box, Terminal, ArrowUp, Activity, Gauge, Code2
 } from 'lucide-react';
-import { telemetry } from './services/telemetry';
-import confetti from 'canvas-confetti';
 import { CodeViewer } from './components/CodeViewer';
-import { executeTool } from './services/toolService';
-
-/**
- * Immutable Deep Set Utility (Recursive & Type-Safe)
- * Safely updates a nested value within an object tree using dot-notation path,
- * ensuring structural sharing/immutability for React state updates.
- */
-function setByPath<T>(obj: T, path: string, value: any): T {
-  // If path is empty, we can't patch "inside", so we return value as the new root
-  if (!path) return value as unknown as T;
-
-  const segments = path.split('.');
-
-  const update = (current: any, depth: number): any => {
-    // 1. Base Case: Reached the target key
-    if (depth === segments.length) {
-      return value;
-    }
-
-    const key = segments[depth];
-    
-    // 2. Clone the current level
-    // We determine if 'current' is an array or object to clone it correctly.
-    // If 'current' is null/undefined (auto-vivification), we check the key to guess type.
-    let clone: any;
-    
-    if (Array.isArray(current)) {
-      clone = [...current];
-    } else if (current && typeof current === 'object') {
-      clone = { ...current };
-    } else {
-      // Auto-vivification: 
-      // If the key is numeric, assume we are building an array.
-      // Otherwise, assume an object.
-      const isIndex = !isNaN(Number(key));
-      clone = isIndex ? [] : {};
-    }
-
-    // 3. Recursive Step: Assign the result of the update to the clone's key
-    clone[key] = update(current ? current[key] : undefined, depth + 1);
-
-    return clone;
-  };
-
-  return update(obj, 0) as T;
-}
+import { useGenUI } from './hooks/useGenUI';
 
 const App = () => {
-  // State
-  const [context, setContext] = useState<UserContext>(INITIAL_CONTEXT);
-  const [input, setInput] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [streamingNode, setStreamingNode] = useState<UINode | null>(null);
-  
-  const [messages, setMessages] = useState<Array<{role: string, text: string, ui?: UINode}>>([
-    { role: 'system', text: 'GenUI Studio is ready. Describe a UI component, dashboard, or layout to generate it instantly.' }
-  ]);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-
-  // Telemetry State
-  const [metrics, setMetrics] = useState({
-    ttft: 0,
-    latency: 0,
-    active: false,
-    hallucinations: 0
-  });
-
-  // Subscribe to telemetry
-  useEffect(() => {
-    const unsubscribe = telemetry.subscribe((event) => {
-      setMetrics(prev => {
-        if (event.name === 'STREAM_START') return { ...prev, active: true, latency: 0, ttft: 0 };
-        if (event.name === 'STREAM_COMPLETE') return { ...prev, active: false, latency: event.value };
-        if (event.name === 'TTFT') return { ...prev, ttft: event.value };
-        if (event.name === 'HALLUCINATION') return { ...prev, hallucinations: prev.hallucinations + 1 };
-        return prev;
-      });
-    });
-    return unsubscribe;
-  }, []);
-
-  // Auto-scroll to bottom of chat
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, loading, streamingNode]);
-
-  // 3.2 Action Protocol & Local State Patch
-  const handleAction = (action: UIAction) => {
-    // 1. Handle Visual Effects
-    if (action.type === 'TRIGGER_EFFECT') {
-        const effect = action.payload?.effect;
-        if (effect === 'CONFETTI') {
-            confetti({
-                particleCount: 100,
-                spread: 70,
-                origin: { y: 0.6 }
-            });
-        } else if (effect === 'SNOW') {
-            const duration = 5000;
-            const animationEnd = Date.now() + duration;
-            let skew = 1;
-
-            (function frame() {
-                const timeLeft = animationEnd - Date.now();
-                const ticks = Math.max(200, 500 * (timeLeft / duration));
-                skew = Math.max(0.8, skew - 0.001);
-
-                confetti({
-                    particleCount: 1,
-                    startVelocity: 0,
-                    ticks: ticks,
-                    origin: {
-                        x: Math.random(),
-                        // since particles fall down, skew is better than nothing
-                        y: (Math.random() * skew) - 0.2
-                    },
-                    colors: ['#ffffff'],
-                    shapes: ['circle'],
-                    gravity: 0.6,
-                    scalar: 0.6,
-                    drift: 0,
-                });
-
-                if (timeLeft > 0) {
-                    requestAnimationFrame(frame);
-                }
-            }());
-        }
-        return;
-    }
-
-    // 2. Handle State Patching
-    if (action.type === 'PATCH_STATE' && action.path) {
-        // CASE A: User is interacting with a node that is currently streaming/generating
-        if (streamingNode) {
-            setStreamingNode((prev) => setByPath(prev, action.path!, action.payload));
-            return;
-        }
-
-        // CASE B: User is interacting with a finalized node in the history
-        setMessages((prevMessages) => {
-            const newMessages = [...prevMessages];
-            // Search backwards for the last message with a UI payload
-            let targetIndex = -1;
-            for (let i = newMessages.length - 1; i >= 0; i--) {
-                if (newMessages[i].ui) {
-                    targetIndex = i;
-                    break;
-                }
-            }
-
-            if (targetIndex !== -1) {
-                const targetMsg = { ...newMessages[targetIndex] };
-                // Immutable update of the UI tree within the message
-                targetMsg.ui = setByPath(targetMsg.ui, action.path!, action.payload);
-                newMessages[targetIndex] = targetMsg;
-            }
-
-            return newMessages;
-        });
-        return;
-    }
-
-    // 3. Handle System Actions (Logging / Navigation fallbacks)
-    const responseText = `Action Executed: ${action.type} (Payload: ${JSON.stringify(action.payload)})`;
-    setMessages(prev => [...prev, { role: 'system', text: responseText }]);
-  };
-
-  const handleKeySelection = async () => {
-    if ((window as any).aistudio?.openSelectKey) {
-      await (window as any).aistudio.openSelectKey();
-    }
-  };
-
-  /**
-   * RECURSIVE GENERATION LOOP (Supports Function Calling)
-   * 
-   * This function handles the conversation flow:
-   * 1. Calls Gemini with current prompt
-   * 2. Streams response
-   * 3. Checks for "tool_call"
-   * 4. If tool_call: Executes tool -> Updates prompt -> Recurses
-   * 5. If UI: Updates streaming buffer -> Finalizes
-   */
-  const handleGeneration = async (prompt: string, originalUserMsg: string) => {
-    let rawAccumulated = "";
-    let isToolCallDetected = false;
-    
-    try {
-        const stream = generateUIStream(prompt, context);
-        
-        for await (const chunk of stream) {
-            rawAccumulated += chunk;
-            
-            // 1. Partial Parse: Attempt to fix and parse the incomplete JSON
-            const partialUI = parsePartialJson(rawAccumulated);
-            
-            // 2. Tool Detection
-            // If the model starts outputting a tool call, we suppress UI rendering
-            if (partialUI?.tool_call) {
-                isToolCallDetected = true;
-                continue;
-            }
-
-            // 3. Update UI Buffer
-            if (partialUI && typeof partialUI === 'object' && !isToolCallDetected) {
-                setStreamingNode(partialUI);
-            }
-        }
-
-        // Final Parse
-        const finalResponse = parsePartialJson(rawAccumulated);
-
-        // CASE A: Handle Tool Call
-        if (finalResponse?.tool_call) {
-             const { name, arguments: args } = finalResponse.tool_call;
-             
-             // Feedback to User
-             setMessages(prev => [...prev, { 
-                 role: 'system', 
-                 text: `⚡ Orchestrating: ${name} with args ${JSON.stringify(args)}` 
-             }]);
-
-             // Execute Tool
-             const toolResult = await executeTool(name, args);
-
-             // Construct Next Prompt (Chain of Thought)
-             const nextPrompt = `
-ORIGINAL USER REQUEST: ${originalUserMsg}
-
-SYSTEM UPDATE - TOOL EXECUTION RESULT:
-Function '${name}' returned:
-${JSON.stringify(toolResult)}
-
-INSTRUCTIONS:
-Based on the tool result above, generate the appropriate UI component now.
-             `;
-             
-             // Recursive Call
-             await handleGeneration(nextPrompt, originalUserMsg);
-             return;
-        }
-
-        // CASE B: Handle UI Response (Finalize)
-        if (!isToolCallDetected && (finalResponse || rawAccumulated.trim())) {
-             setMessages(prev => [...prev, { 
-                 role: 'assistant', 
-                 text: '', 
-                 ui: finalResponse || streamingNode
-             }]);
-        }
-
-    } catch (e) {
-        console.error("Streaming failed", e);
-        setMessages(prev => [...prev, { 
-            role: 'system', 
-            text: 'Error rendering stream. See console.' 
-        }]);
-    }
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!input.trim() || loading) return;
-
-    const userMsg = input;
-    setInput('');
-    setLoading(true);
-    setStreamingNode(null); // Reset streaming buffer
-
-    setMessages(prev => [...prev, { role: 'user', text: userMsg }]);
-
-    // Trigger the recursive generation loop
-    await handleGeneration(userMsg, userMsg);
-
-    setLoading(false);
-    setStreamingNode(null);
-  };
+  const { state, actions, refs } = useGenUI();
+  const { context, input, loading, streamingNode, messages, metrics } = state;
 
   return (
     <div className="flex flex-col h-screen overflow-hidden text-slate-200 font-sans selection:bg-indigo-500/30">
@@ -309,7 +30,7 @@ Based on the tool result above, generate the appropriate UI component now.
                 Gemini 3.0 Pro {loading ? 'Thinking...' : 'Ready'}
             </div>
             <button 
-              onClick={handleKeySelection}
+              onClick={actions.handleKeySelection}
               className="p-2 text-slate-400 hover:text-white transition-colors"
               title="API Key Settings"
             >
@@ -326,27 +47,27 @@ Based on the tool result above, generate the appropriate UI component now.
             <div className="sticky top-4 z-40 flex justify-center mb-8">
                 <div className="bg-zinc-900/90 backdrop-blur-xl border border-white/10 p-1.5 rounded-full shadow-2xl flex items-center gap-1">
                     <button 
-                        onClick={() => setContext(p => ({ ...p, role: 'user' }))}
+                        onClick={() => actions.setContext(p => ({ ...p, role: 'user' }))}
                         className={`px-4 py-2 rounded-full text-xs font-semibold transition-all flex items-center gap-2 ${context.role === 'user' ? 'bg-zinc-800 text-white shadow-sm ring-1 ring-white/10' : 'text-slate-500 hover:text-slate-300'}`}
                     >
                         <User className="w-3.5 h-3.5" /> User View
                     </button>
                     <button 
-                        onClick={() => setContext(p => ({ ...p, role: 'admin' }))}
+                        onClick={() => actions.setContext(p => ({ ...p, role: 'admin' }))}
                         className={`px-4 py-2 rounded-full text-xs font-semibold transition-all flex items-center gap-2 ${context.role === 'admin' ? 'bg-zinc-800 text-white shadow-sm ring-1 ring-white/10' : 'text-slate-500 hover:text-slate-300'}`}
                     >
                         <Shield className="w-3.5 h-3.5" /> Admin View
                     </button>
                     <div className="w-px h-4 bg-white/10 mx-2" />
                     <button 
-                        onClick={() => setContext(p => ({ ...p, device: 'desktop' }))}
+                        onClick={() => actions.setContext(p => ({ ...p, device: 'desktop' }))}
                         className={`p-2 rounded-full transition-all ${context.device === 'desktop' ? 'bg-blue-500/10 text-blue-400 ring-1 ring-blue-500/20' : 'text-slate-500 hover:text-slate-300'}`}
                         title="Desktop View"
                     >
                         <Monitor className="w-4 h-4" />
                     </button>
                     <button 
-                        onClick={() => setContext(p => ({ ...p, device: 'mobile' }))}
+                        onClick={() => actions.setContext(p => ({ ...p, device: 'mobile' }))}
                         className={`p-2 rounded-full transition-all ${context.device === 'mobile' ? 'bg-blue-500/10 text-blue-400 ring-1 ring-blue-500/20' : 'text-slate-500 hover:text-slate-300'}`}
                         title="Mobile View"
                     >
@@ -399,7 +120,7 @@ Based on the tool result above, generate the appropriate UI component now.
                     {msg.ui && (
                         <div className="w-full flex justify-center py-6">
                              {/* Re-use the device wrapper logic */}
-                             <DeviceWrapper context={context} node={msg.ui} onAction={handleAction} />
+                             <DeviceWrapper context={context} node={msg.ui} onAction={actions.handleAction} />
                         </div>
                     )}
                   </div>
@@ -411,7 +132,7 @@ Based on the tool result above, generate the appropriate UI component now.
             {/* LIVE STREAMING RENDER AREA */}
             {loading && streamingNode && (
                 <div className="w-full flex justify-center py-6 animate-in fade-in duration-300">
-                    <DeviceWrapper context={context} node={streamingNode} onAction={handleAction} isStreaming={true} />
+                    <DeviceWrapper context={context} node={streamingNode} onAction={actions.handleAction} isStreaming={true} />
                 </div>
             )}
 
@@ -432,7 +153,7 @@ Based on the tool result above, generate the appropriate UI component now.
                 </div>
             )}
             
-            <div ref={messagesEndRef} className="h-32" /> 
+            <div ref={refs.messagesEndRef} className="h-32" /> 
         </div>
       </main>
 
@@ -465,7 +186,7 @@ Based on the tool result above, generate the appropriate UI component now.
                )}
             </div>
 
-            <form onSubmit={handleSubmit} className="relative group transform transition-all hover:-translate-y-1">
+            <form onSubmit={actions.handleSubmit} className="relative group transform transition-all hover:-translate-y-1">
                 <div className="absolute inset-0 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 rounded-2xl blur opacity-20 group-hover:opacity-40 transition-opacity duration-500" />
                 
                 <div className="relative flex items-center bg-zinc-900/80 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl overflow-hidden">
@@ -475,7 +196,7 @@ Based on the tool result above, generate the appropriate UI component now.
                     <input
                         type="text"
                         value={input}
-                        onChange={(e) => setInput(e.target.value)}
+                        onChange={(e) => actions.setInput(e.target.value)}
                         placeholder="Describe your UI component..."
                         className="w-full bg-transparent text-slate-100 placeholder-slate-500 py-4 px-2 focus:outline-none font-medium"
                         disabled={loading}
