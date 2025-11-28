@@ -1,4 +1,5 @@
 
+
 import { UserContext } from "./types";
 
 export const INITIAL_CONTEXT: UserContext = {
@@ -130,19 +131,27 @@ export const FEW_SHOT_EXAMPLES = `
 EXAMPLE 1: User asks "Show me a modern landing page hero"
 Response:
 {
-  "hero": {
-    "title": "Build the Future",
-    "subtitle": "Deploy your AI agents in seconds with our distributed infrastructure.",
-    "gradient": "BLUE_PURPLE",
-    "align": "CENTER",
+  "container": {
+    "layout": "COL",
+    "bgImage": "https://image.pollinations.ai/prompt/abstract%20digital%20network%20connection%20blue%20purple%20gradient?width=1920&height=1080&nologo=true",
     "children": [
-      { 
-        "container": {
-          "layout": "ROW",
-          "gap": "GAP_MD",
+      {
+        "hero": {
+          "title": "Build the Future",
+          "subtitle": "Deploy your AI agents in seconds with our distributed infrastructure.",
+          "gradient": "BLUE_PURPLE",
+          "align": "CENTER",
           "children": [
-            { "button": { "label": "Get Started", "variant": "GRADIENT", "icon": "Rocket", "action": { "type": "NAVIGATE", "payload": "/signup" } } },
-            { "button": { "label": "Documentation", "variant": "OUTLINE", "icon": "Book", "action": { "type": "NAVIGATE", "payload": "/docs" } } }
+            { 
+              "container": {
+                "layout": "ROW",
+                "gap": "GAP_MD",
+                "children": [
+                  { "button": { "label": "Get Started", "variant": "GRADIENT", "icon": "Rocket", "action": { "type": "NAVIGATE", "payload": "/signup" } } },
+                  { "button": { "label": "Documentation", "variant": "OUTLINE", "icon": "Book", "action": { "type": "NAVIGATE", "payload": "/docs" } } }
+                ]
+              }
+            }
           ]
         }
       }
@@ -160,6 +169,7 @@ Response:
           "title": "Project Status",
           "colSpan": 3,
           "rowSpan": 2,
+          "bgImage": "https://image.pollinations.ai/prompt/minimalist%20workspace%20desk%20laptop%20plant?width=800&height=600&nologo=true",
           "children": [
             {
               "kanban": {
@@ -215,6 +225,17 @@ Your output must be strictly machine-readable JSON that maps 1:1 to a Protobuf s
 4. **Recursive Structure:** Always wrap children in a \`children\` array inside a \`container\` or \`card\`.
 5. **No IDs:** Do not generate IDs. The client handles indexing.
 6. **Data Injection:** You ARE the backend. You must generate realistic mock data for Charts, Tables, and Stats. Do not leave them empty.
+
+**IMAGES & MEDIA:**
+When the user needs an image (e.g., \`bgImage\`, \`avatar\`, \`bento_card\`), generate a dynamic URL using **Pollinations.ai**.
+
+Format: \`https://image.pollinations.ai/prompt/{visual_description}?width={w}&height={h}&nologo=true\`
+
+Rules:
+1. **{visual_description}**: A concise, descriptive English prompt (URL encoded). E.g., "futuristic%20city%20neon%20lights".
+2. **Dimensions**: Use \`width=800&height=600\` for cards, \`width=1920&height=1080\` for hero backgrounds.
+3. **Style Consistency**: Append style keywords like "minimalist", "4k", "high quality" to the prompt.
+4. **Avatars**: For user avatars, stick to \`https://i.pravatar.cc/150?u={random_string}\` (it's faster).
 
 **INTERACTIVE CAPABILITIES:**
 You can make buttons trigger visual effects using the "action" prop with type "TRIGGER_EFFECT".

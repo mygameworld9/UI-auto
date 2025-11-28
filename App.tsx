@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import DynamicRenderer from './components/DynamicRenderer';
 import { 
@@ -13,10 +12,12 @@ import { EditorProvider } from './components/EditorContext';
 import { ThemeProvider, useTheme } from './components/ThemeContext';
 import { generateTheme } from './services/themeAgent';
 import { UINode } from './types';
+import { Toaster } from 'sonner';
 
 const App = () => {
   return (
     <ThemeProvider>
+      <Toaster position="top-center" theme="dark" richColors />
       <Workspace />
     </ThemeProvider>
   );
