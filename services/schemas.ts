@@ -33,8 +33,10 @@ export const UINodeSchema: z.ZodType<any> = z.lazy(() =>
     InputNode,
     BadgeNode,
     SeparatorNode,
-    // Fallback for completely unknown nodes to prevent crash, 
-    // but specific schemas above take precedence.
+    BentoContainerNode,
+    BentoCardNode,
+    KanbanNode,
+    // Fallback for completely unknown nodes to prevent crash
     z.record(z.string(), z.any()) 
   ])
 );
@@ -47,7 +49,7 @@ const NodeArray = z.array(UINodeSchema).optional().default([]);
 
 // 1. Container
 const ContainerProps = z.object({
-  layout: z.string().optional(), // Loose validation to allow Component defaults
+  layout: z.string().optional(),
   gap: z.string().optional(),
   padding: z.boolean().optional(),
   background: z.string().optional(),
@@ -69,7 +71,7 @@ const HeroNode = z.object({ hero: HeroProps });
 
 // 3. Text
 const TextProps = z.object({
-  content: z.string().optional().default(""), // Allow empty, but ensure string
+  content: z.string().optional().default(""),
   variant: z.string().optional(),
   color: z.string().optional(),
   font: z.string().optional(),
@@ -94,7 +96,6 @@ const CardProps = z.object({
 const CardNode = z.object({ card: CardProps });
 
 // 6. Table
-// Row can be a string, number, or a nested UI Node (e.g. Badge inside table)
 const TableCell = z.union([z.string(), z.number(), UINodeSchema, z.null()]);
 const TableProps = z.object({
   headers: z.array(z.string()).optional(),
@@ -197,16 +198,46 @@ const BadgeProps = z.object({
 });
 const BadgeNode = z.object({ badge: BadgeProps });
 
-// 17. Separator (Empty object allowed)
+// 17. Separator
 const SeparatorNode = z.object({ separator: z.object({}).optional() });
 
+// 18. Bento Grid
+const BentoContainerProps = z.object({
+  children: NodeArray,
+});
+const BentoContainerNode = z.object({ bento_container: BentoContainerProps });
+
+const BentoCardProps = z.object({
+  title: z.string().optional(),
+  colSpan: z.number().optional(), // 1, 2, 3, 4
+  rowSpan: z.number().optional(), // 1, 2, 3
+  bgImage: z.string().optional(),
+  children: NodeArray,
+});
+const BentoCardNode = z.object({ bento_card: BentoCardProps });
+
+// 19. Kanban
+const KanbanItemSchema = z.union([
+  z.string(),
+  z.object({ id: z.string().optional(), content: z.string(), tag: z.string().optional() })
+]);
+
+const KanbanColumnSchema = z.object({
+  title: z.string(),
+  color: z.string().optional(), // "BLUE", "GREEN", etc
+  items: z.array(KanbanItemSchema).optional().default([]),
+});
+
+const KanbanProps = z.object({
+  columns: z.array(KanbanColumnSchema).optional().default([]),
+});
+const KanbanNode = z.object({ kanban: KanbanProps });
 
 // ----------------------------------------------------------------------
 // EXPORTED VALIDATOR
 // ----------------------------------------------------------------------
 
 export const validateNode = (node: any) => {
-  // During streaming, node might be undefined or null
   if (!node) return null;
 
   const result = UINodeSchema.safeParse(node);
@@ -214,11 +245,6 @@ export const validateNode = (node: any) => {
   if (result.success) {
     return result.data;
   } else {
-    // In strict mode, we return null if schema doesn't match.
-    // This prevents rendering malformed or "half-baked" nodes during the stream.
-    // e.g. { "chart": { "data": [ ... ] } } is valid
-    // but { "chart": { "data": "oops" } } is invalid and won't render.
-    // console.warn("Validation Failed:", result.error); 
     return null;
   }
 };

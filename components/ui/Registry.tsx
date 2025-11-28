@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Container } from './Container';
 import { Typography } from './Typography';
@@ -13,6 +14,8 @@ import { Separator } from './Separator';
 import { Badge } from './Badge';
 import { Accordion } from './Accordion';
 import { ImageComponent } from './Image';
+import { BentoContainer, BentoCard } from './BentoGrid';
+import { Kanban } from './Kanban';
 
 // Lazy load heavy components to optimize bundle size and TTI
 const ChartComponent = React.lazy(() => import('./Chart').then(module => ({ default: module.ChartComponent })));
@@ -40,6 +43,11 @@ export const ComponentRegistry: Record<string, React.FC<any>> = {
   progress: Progress,
   image: ImageComponent,
   
+  // New Complex Components
+  bento_container: BentoContainer,
+  bento_card: BentoCard,
+  kanban: Kanban,
+
   // Lazy Components
   chart: ChartComponent,
   table: Table,

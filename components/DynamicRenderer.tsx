@@ -6,6 +6,7 @@ import { validateNode } from '../services/schemas';
 import { telemetry } from '../services/telemetry';
 import { useEditor } from './EditorContext';
 import { AlertCircle, RefreshCw } from 'lucide-react';
+import { motion } from 'framer-motion';
 
 interface RendererProps {
   node: UINode;
@@ -16,7 +17,7 @@ interface RendererProps {
 }
 
 interface ErrorBoundaryProps {
-  children?: React.ReactNode; // Made optional to satisfy strict JSX checks
+  children?: React.ReactNode;
   fallback?: React.ReactNode;
   node: UINode;
   path: string;
@@ -30,7 +31,6 @@ interface ErrorBoundaryState {
 
 class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
   public state: ErrorBoundaryState = { hasError: false, error: null };
-  // Explicitly declare props to satisfy strict TypeScript environments
   public props: ErrorBoundaryProps;
 
   constructor(props: ErrorBoundaryProps) {
@@ -135,17 +135,20 @@ const DynamicRenderer: React.FC<RendererProps> = ({ node, onAction, index = 0, p
 
   return (
     <ErrorBoundary node={node} path={path} onError={onError}>
-      {isEditing ? (
-        <div 
-          onClickCapture={handleSelect}
-          className={`relative transition-all duration-200 ${isSelected ? 'ring-2 ring-indigo-500 rounded cursor-default z-50' : 'hover:ring-1 hover:ring-indigo-500/50 hover:bg-indigo-500/5 cursor-pointer rounded'}`}
-          style={{ display: 'contents' }}
-        >
-          {content}
-        </div>
-      ) : (
-        content
-      )}
+      <motion.div
+        initial={{ opacity: 0, y: 10, scale: 0.98 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        transition={{ 
+          duration: 0.4, 
+          ease: "easeOut",
+          delay: index * 0.05 // Stagger based on index
+        }}
+        onClickCapture={isEditing ? handleSelect : undefined}
+        className={`relative transition-all duration-200 w-full ${isSelected ? 'ring-2 ring-indigo-500 rounded cursor-default z-50' : isEditing ? 'hover:ring-1 hover:ring-indigo-500/50 hover:bg-indigo-500/5 cursor-pointer rounded' : ''}`}
+        style={isEditing ? { display: 'contents' } : undefined}
+      >
+        {content}
+      </motion.div>
     </ErrorBoundary>
   );
 };

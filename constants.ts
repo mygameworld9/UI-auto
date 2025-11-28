@@ -107,6 +107,23 @@ Each node MUST be an object with EXACTLY ONE key (the component name).
       - defaultZoom: number
       - style: "DARK", "LIGHT", "SATELLITE"
       - markers: Array<{ title: string, lat: number, lng: number }>
+
+15. "bento_container" (Grid Layout)
+    - Props:
+      - children: Array<Nodes> (Must contain "bento_card" nodes)
+
+16. "bento_card" (Grid Item)
+    - Props:
+      - title: string
+      - colSpan: number (1-4, default 1)
+      - rowSpan: number (1-3, default 1)
+      - bgImage: string (optional)
+      - children: Array<Nodes>
+
+17. "kanban" (Project Board)
+    - Props:
+      - columns: Array<{ title: string, color: string, items: Array<string | { content: string, tag: string }> }>
+      * Colors: "BLUE", "GREEN", "ORANGE", "RED", "GRAY"
 `;
 
 export const FEW_SHOT_EXAMPLES = `
@@ -133,128 +150,47 @@ Response:
   }
 }
 
-EXAMPLE 2: User asks "System Health Dashboard"
+EXAMPLE 2: User asks "Personal Productivity Dashboard"
 Response:
 {
-  "container": {
-    "layout": "COL",
-    "gap": "GAP_LG",
-    "padding": true,
-    "background": "SURFACE",
+  "bento_container": {
     "children": [
       {
-        "container": {
-          "layout": "ROW",
-          "className": "justify-between",
+        "bento_card": {
+          "title": "Project Status",
+          "colSpan": 3,
+          "rowSpan": 2,
           "children": [
-            { "text": { "content": "System Status", "variant": "H1" } },
-            { 
-              "container": {
-                 "layout": "ROW",
-                 "gap": "GAP_SM",
-                 "children": [
-                    { "text": { "content": "Last updated: Just now", "variant": "CAPTION", "color": "MUTED" } },
-                    { "avatar": { "initials": "AD", "status": "ONLINE" } }
-                 ]
+            {
+              "kanban": {
+                "columns": [
+                  { "title": "To Do", "color": "GRAY", "items": ["Design Review", "Update Docs"] },
+                  { "title": "In Progress", "color": "BLUE", "items": [{ "content": "Implement API", "tag": "Backend" }, "Fix Auth Bug"] },
+                  { "title": "Done", "color": "GREEN", "items": ["Deploy v1.2"] }
+                ]
               }
             }
           ]
         }
       },
       {
-        "container": {
-          "layout": "GRID",
-          "gap": "GAP_MD",
+        "bento_card": {
+          "title": "Focus Time",
+          "colSpan": 1,
+          "rowSpan": 1,
           "children": [
-            { "stat": { "label": "Server Uptime", "value": "99.99%", "trend": "+0.01%", "trendDirection": "UP" } },
-            { "stat": { "label": "Active Sessions", "value": "14,205", "trend": "+12%", "trendDirection": "UP" } },
-            { "stat": { "label": "Error Rate", "value": "0.02%", "trend": "-50%", "trendDirection": "DOWN" } }
+            { "stat": { "label": "Today", "value": "4h 20m", "trend": "+12%", "trendDirection": "UP" } }
           ]
         }
       },
       {
-        "container": {
-          "layout": "GRID",
-          "gap": "GAP_MD",
-          "className": "grid-cols-1 md:grid-cols-3",
+        "bento_card": {
+          "title": "Daily Goals",
+          "colSpan": 1,
+          "rowSpan": 1,
           "children": [
-             {
-               "card": {
-                 "title": "Traffic Volume",
-                 "variant": "ELEVATED",
-                 "children": [
-                   { "chart": { "type": "AREA", "color": "#8b5cf6", "data": [{ "name": "10am", "value": 400 }, { "name": "11am", "value": 600 }, { "name": "12pm", "value": 550 }, { "name": "1pm", "value": 900 }] } }
-                 ]
-               }
-             },
-             {
-               "card": {
-                 "title": "Regional Coverage",
-                 "variant": "OUTLINED",
-                 "children": [
-                   { "map": { "label": "Active Zones", "style": "DARK", "markers": [{ "title": "US-East", "lat": 40, "lng": -74 }, { "title": "EU-West", "lat": 51, "lng": 0 }] } }
-                 ]
-               }
-             },
-             {
-               "card": {
-                 "title": "Recent Alerts",
-                 "variant": "FROSTED",
-                 "children": [
-                   { "alert": { "title": "Backup Complete", "description": "Daily snapshot finished successfully.", "variant": "SUCCESS" } },
-                   { "alert": { "title": "High Latency", "description": "us-east-1 detected 200ms lag.", "variant": "WARNING" } }
-                 ]
-               }
-             }
+            { "progress": { "label": "Tasks", "value": 75, "color": "GREEN" } }
           ]
-        }
-      }
-    ]
-  }
-}
-
-EXAMPLE 3: User asks "Create a warm vintage Christmas greeting card for family"
-Response:
-{
-  "container": {
-    "layout": "COL",
-    "padding": true,
-    "gap": "GAP_LG",
-    "className": "aspect-[3/4] max-w-md mx-auto rounded-3xl shadow-2xl border-4 border-amber-900/40 items-center text-center justify-center relative overflow-hidden",
-    "bgImage": "https://images.unsplash.com/photo-1576919228236-a097c32a5cd4?q=80&w=1000&auto=format&fit=crop",
-    "children": [
-      {
-        "text": {
-          "content": "Merry Christmas",
-          "variant": "H1",
-          "color": "ACCENT", 
-          "font": "CURSIVE"
-        }
-      },
-      {
-        "text": {
-          "content": "May your days be merry and bright, and may all your Christmases be white.",
-          "variant": "BODY",
-          "color": "DEFAULT",
-          "font": "SERIF"
-        }
-      },
-      { 
-        "container": { 
-           "layout": "COL", 
-           "gap": "GAP_SM",
-           "className": "w-full items-center",
-           "children": [
-              { "separator": {} },
-              {
-                "text": {
-                  "content": "With love, The Smiths",
-                  "variant": "H3",
-                  "color": "DEFAULT",
-                  "font": "CURSIVE"
-                }
-              }
-           ]
         }
       }
     ]
