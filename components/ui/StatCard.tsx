@@ -1,30 +1,31 @@
+
 import React from 'react';
 import * as Lucide from 'lucide-react';
+import { useTheme } from '../ThemeContext';
 
 export const StatCard = ({ label, value, trend, trendDirection }: any) => {
+  const { theme } = useTheme();
   const isUp = trendDirection === 'UP';
   const isDown = trendDirection === 'DOWN';
   
+  const trendClass = isUp ? theme.stat.trend.UP : isDown ? theme.stat.trend.DOWN : theme.stat.trend.NEUTRAL;
+
   return (
-    <div className="bg-zinc-900 p-6 rounded-2xl border border-zinc-800 hover:border-zinc-600 transition-colors group relative overflow-hidden">
-      <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-         {/* Abstract Shape */}
-         <div className="w-16 h-16 bg-gradient-to-br from-white to-transparent rounded-full blur-xl" />
+    <div className={theme.stat.base}>
+      <div className={theme.stat.decorator}>
+         <div className={theme.stat.decoratorBlur} />
       </div>
 
       <div className="flex justify-between items-start mb-4 relative z-10">
-        <span className="text-sm font-medium text-slate-400 uppercase tracking-wide">{label}</span>
+        <span className={theme.stat.label}>{label}</span>
       </div>
       
       <div className="flex items-baseline gap-3 relative z-10">
-          <div className="text-3xl font-bold text-white tracking-tight">
+          <div className={theme.stat.value}>
             {value}
           </div>
           {trend && (
-            <span className={`text-xs font-bold px-2 py-0.5 rounded-full flex items-center ${
-                isUp ? 'text-emerald-400 bg-emerald-500/10' : 
-                isDown ? 'text-red-400 bg-red-500/10' : 'text-slate-400 bg-slate-500/10'
-            }`}>
+            <span className={`${theme.stat.trend.base} ${trendClass}`}>
                 {isUp ? <Lucide.TrendingUp className="w-3 h-3 mr-1" /> : isDown ? <Lucide.TrendingDown className="w-3 h-3 mr-1" /> : <Lucide.Minus className="w-3 h-3 mr-1" />}
                 {trend}
             </span>

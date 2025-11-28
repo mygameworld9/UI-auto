@@ -5,36 +5,58 @@ import { ComponentRegistry } from './ui/Registry';
 import { validateNode } from '../services/schemas';
 import { telemetry } from '../services/telemetry';
 import { useEditor } from './EditorContext';
+import { AlertCircle, RefreshCw } from 'lucide-react';
 
 interface RendererProps {
   node: UINode;
   onAction: (action: UIAction) => void;
   index?: number;
   path?: string; // New: Current path in the JSON tree
+  onError?: (error: Error, node: UINode, path: string) => void; // New: Healing Callback
 }
 
 interface ErrorBoundaryProps {
   children: React.ReactNode;
-  fallback: React.ReactNode;
+  fallback?: React.ReactNode;
+  node: UINode;
+  path: string;
+  onError?: (error: Error, node: UINode, path: string) => void;
 }
 
 interface ErrorBoundaryState {
   hasError: boolean;
+  error: Error | null;
 }
 
 class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
   constructor(props: ErrorBoundaryProps) {
     super(props);
-    this.state = { hasError: false };
+    this.state = { hasError: false, error: null };
   }
 
-  static getDerivedStateFromError(_: any): ErrorBoundaryState {
-    return { hasError: true };
+  static getDerivedStateFromError(error: Error): ErrorBoundaryState {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    console.error("[DynamicRenderer] Caught Error:", error, errorInfo);
+    if (this.props.onError) {
+      this.props.onError(error, this.props.node, this.props.path);
+    }
   }
 
   render() {
     if (this.state.hasError) {
-      return this.props.fallback;
+      return (
+        <div className="p-4 rounded-lg border border-red-500/30 bg-red-900/10 flex items-center gap-3 animate-pulse">
+            <AlertCircle className="w-5 h-5 text-red-400" />
+            <div className="flex-1">
+                <h4 className="text-sm font-bold text-red-400">Rendering Failed</h4>
+                <p className="text-xs text-red-300/70">Attempting auto-repair...</p>
+            </div>
+            <RefreshCw className="w-4 h-4 text-red-400 animate-spin" />
+        </div>
+      );
     }
     return this.props.children;
   }
@@ -42,9 +64,9 @@ class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundarySta
 
 /**
  * THE RECURSIVE RENDERER
- * Handles Schema Validation, Rendering, and now Editor Interaction
+ * Handles Schema Validation, Rendering, Editor Interaction, and Self-Healing
  */
-const DynamicRenderer: React.FC<RendererProps> = ({ node, onAction, index = 0, path = 'root' }) => {
+const DynamicRenderer: React.FC<RendererProps> = ({ node, onAction, index = 0, path = 'root', onError }) => {
   const { isEditing, selectedPath, onSelect } = useEditor();
 
   // 1. Validation Layer
@@ -76,7 +98,6 @@ const DynamicRenderer: React.FC<RendererProps> = ({ node, onAction, index = 0, p
   const { children, ...restProps } = props;
   
   // Calculate path to the props of this specific component
-  // If we are at 'root', and component is 'container', props are at 'root.container'
   const currentPath = `${path}.${componentType}`;
   
   const isSelected = isEditing && selectedPath === currentPath;
@@ -103,18 +124,13 @@ const DynamicRenderer: React.FC<RendererProps> = ({ node, onAction, index = 0, p
           children={children} 
           onAction={onAction} 
           path={currentPath} // Pass path for children path generation
+          onError={onError} // Propagate error handler
         />
     </React.Suspense>
   );
 
   return (
-    <ErrorBoundary 
-      fallback={
-        <div className="text-xs text-red-400 p-2 border border-red-900/50 bg-red-900/10 rounded">
-          Error: {componentType}
-        </div>
-      }
-    >
+    <ErrorBoundary node={node} path={path} onError={onError}>
       {isEditing ? (
         <div 
           onClickCapture={handleSelect}

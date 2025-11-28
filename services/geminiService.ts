@@ -1,18 +1,30 @@
-import OpenAI from "openai";
+
+import { GoogleGenAI } from "@google/genai";
 import { COMPONENT_SPECS, SYSTEM_INSTRUCTION, FEW_SHOT_EXAMPLES } from "../constants";
 import { UserContext } from "../types";
 import { ModelConfig } from "../types/settings";
 import { telemetry } from "./telemetry";
 
-const createClient = (config: ModelConfig) => {
-  return new OpenAI({
-    baseURL: config.baseUrl,
-    apiKey: config.apiKey,
-    dangerouslyAllowBrowser: true 
-  });
-};
+// API Key must be obtained exclusively from process.env.API_KEY as per directives.
+const apiKey = process.env.API_KEY;
 
-const buildMessages = (userInput: string, context: UserContext): OpenAI.Chat.Completions.ChatCompletionMessageParam[] => {
+export async function* generateUIStream(prompt: string, context: UserContext, config: ModelConfig): AsyncGenerator<string, void, unknown> {
+  if (!apiKey) {
+      yield JSON.stringify({
+        container: {
+          layout: 'COL',
+          padding: true,
+          children: [
+            { alert: { title: "Configuration Missing", description: "API Key must be configured in environment variables.", variant: 'ERROR' } }
+          ]
+        }
+      });
+      return;
+  }
+
+  // Always use new GoogleGenAI({ apiKey: process.env.API_KEY })
+  const ai = new GoogleGenAI({ apiKey });
+
   const contextPrompt = `
     CURRENT USER CONTEXT:
     Role: ${context.role}
@@ -26,50 +38,33 @@ const buildMessages = (userInput: string, context: UserContext): OpenAI.Chat.Com
     ${FEW_SHOT_EXAMPLES}
 
     USER REQUEST:
-    ${userInput}
+    ${prompt}
 
     INSTRUCTIONS:
     Generate the JSON UI Tree. Ensure layout adapts to ${context.device}.
     Do NOT output Markdown. Output raw JSON.
   `;
 
-  return [
-    { role: "system", content: SYSTEM_INSTRUCTION },
-    { role: "user", content: contextPrompt }
-  ];
-};
-
-export async function* generateUIStream(prompt: string, context: UserContext, config: ModelConfig): AsyncGenerator<string, void, unknown> {
-  if (!config.apiKey) {
-      yield JSON.stringify({
-        container: {
-          layout: 'COL',
-          padding: true,
-          children: [
-            { alert: { title: "Configuration Missing", description: "Please set your API Key in settings.", variant: 'ERROR' } }
-          ]
-        }
-      });
-      return;
-  }
-
-  const client = createClient(config);
-  const messages = buildMessages(prompt, context);
-  const traceId = telemetry.startTrace('generate_ui_stream_openai');
+  const traceId = telemetry.startTrace('generate_ui_stream_gemini');
   let firstTokenReceived = false;
   let accumulatedSize = 0;
 
   try {
-    const stream = await client.chat.completions.create({
-      model: config.model,
-      messages: messages,
-      stream: true,
-      temperature: 0.3,
-      response_format: { type: "json_object" } // Prefer JSON mode if supported by the model/provider
+    const modelName = config.model || 'gemini-2.5-flash';
+    
+    // Using generateContentStream with @google/genai SDK
+    const responseStream = await ai.models.generateContentStream({
+      model: modelName,
+      contents: contextPrompt,
+      config: {
+        systemInstruction: SYSTEM_INSTRUCTION,
+        responseMimeType: 'application/json',
+        temperature: 0.3,
+      }
     });
 
-    for await (const chunk of stream) {
-      const content = chunk.choices[0]?.delta?.content || "";
+    for await (const chunk of responseStream) {
+      const content = chunk.text;
       
       if (!firstTokenReceived && content) {
         const startTime = telemetry.getStartTime(traceId);
@@ -87,7 +82,7 @@ export async function* generateUIStream(prompt: string, context: UserContext, co
     }
 
   } catch (error: any) {
-    console.error("OpenAI Stream Error:", error);
+    console.error("Gemini Stream Error:", error);
     telemetry.logEvent(traceId, 'ERROR', { error: String(error) });
     
     yield JSON.stringify({
@@ -112,9 +107,9 @@ export async function* generateUIStream(prompt: string, context: UserContext, co
 }
 
 export async function refineComponent(prompt: string, currentJson: any, config: ModelConfig): Promise<any> {
-  if (!config.apiKey) throw new Error("API Key missing");
+  if (!apiKey) throw new Error("API Key missing from environment");
 
-  const client = createClient(config);
+  const ai = new GoogleGenAI({ apiKey });
   
   const refinementPrompt = `
     You are an expert UI Refiner.
@@ -136,21 +131,64 @@ export async function refineComponent(prompt: string, currentJson: any, config: 
   `;
 
   try {
-    const response = await client.chat.completions.create({
-      model: config.model,
-      messages: [
-        { role: "system", content: "You are a JSON-only UI generator." },
-        { role: "user", content: refinementPrompt }
-      ],
-      temperature: 0.2,
-      response_format: { type: "json_object" }
+    const response = await ai.models.generateContent({
+      model: config.model || 'gemini-2.5-flash',
+      contents: refinementPrompt,
+      config: {
+        systemInstruction: "You are a JSON-only UI generator.",
+        responseMimeType: "application/json",
+        temperature: 0.2
+      }
     });
 
-    const text = response.choices[0]?.message?.content;
+    const text = response.text;
     if (!text) throw new Error("Empty response from refine model");
     return JSON.parse(text);
   } catch (error) {
     console.error("Refinement Error:", error);
     throw error;
+  }
+}
+
+export async function fixComponent(error: string, badNode: any, config: ModelConfig): Promise<any> {
+  if (!apiKey) throw new Error("API Key missing from environment");
+  const ai = new GoogleGenAI({ apiKey });
+
+  const fixPrompt = `
+    You are an expert React/JSON Debugger.
+    
+    ERROR DETECTED:
+    ${error}
+
+    MALFORMED NODE JSON:
+    ${JSON.stringify(badNode, null, 2)}
+
+    COMPONENT SPECS:
+    ${COMPONENT_SPECS}
+
+    INSTRUCTIONS:
+    1. Analyze the error and the JSON.
+    2. Fix the JSON so it strictly adheres to the schema and solves the crash.
+    3. Return ONLY the fixed JSON node.
+    4. Do NOT wrap in Markdown.
+  `;
+
+  try {
+     const response = await ai.models.generateContent({
+      model: config.model || 'gemini-2.5-flash',
+      contents: fixPrompt,
+      config: {
+        systemInstruction: "You are a code fixer. Output raw JSON only.",
+        responseMimeType: "application/json",
+        temperature: 0.1
+      }
+    });
+
+    const text = response.text;
+    if (!text) throw new Error("Empty response from fix model");
+    return JSON.parse(text);
+  } catch (err) {
+    console.error("Auto-Fix Failed:", err);
+    throw err;
   }
 }

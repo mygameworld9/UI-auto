@@ -1,3 +1,8 @@
-import React from 'react';
 
-export const Separator = () => <div className="h-px bg-zinc-800 my-8 w-full" />;
+import React from 'react';
+import { useTheme } from '../ThemeContext';
+
+export const Separator = () => {
+    const { theme } = useTheme();
+    return <div className={theme.separator.base} />;
+};

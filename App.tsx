@@ -2,17 +2,52 @@
 import React, { useState } from 'react';
 import DynamicRenderer from './components/DynamicRenderer';
 import { 
-  User, Sparkles, Smartphone, Monitor, Shield, Zap, Settings, Terminal, ArrowUp, Activity, Gauge, Code2, PenTool, MousePointer2
+  User, Sparkles, Smartphone, Monitor, Shield, Zap, Settings, Terminal, ArrowUp, Activity, Gauge, Code2, PenTool, MousePointer2, Palette
 } from 'lucide-react';
 import { CodeViewer } from './components/CodeViewer';
 import { SettingsDialog } from './components/SettingsDialog';
 import { useGenUI } from './hooks/useGenUI';
 import { EditorProvider } from './components/EditorContext';
+import { ThemeProvider, useTheme } from './components/ThemeContext';
+import { generateTheme } from './services/themeAgent';
 
 const App = () => {
+  return (
+    <ThemeProvider>
+      <MainApp />
+    </ThemeProvider>
+  );
+};
+
+const MainApp = () => {
   const { state, actions, refs } = useGenUI();
   const { context, input, loading, streamingNode, messages, metrics, editMode, selectedPath, config } = state;
+  const { setTheme, isGenerating, setIsGenerating } = useTheme();
   const [showSettings, setShowSettings] = useState(false);
+
+  // Intercept theme commands
+  const handleCustomSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (input.startsWith('/theme')) {
+       const themePrompt = input.replace('/theme', '').trim();
+       if (!themePrompt) return;
+       
+       setIsGenerating(true);
+       actions.setInput('');
+       try {
+          const newTheme = await generateTheme(themePrompt, config);
+          setTheme(newTheme);
+          // Add system message
+          actions.handleAction({ type: 'SYSTEM', payload: `Theme updated: ${themePrompt}` }); // Dummy action to log
+       } catch (err) {
+          console.error(err);
+       } finally {
+          setIsGenerating(false);
+       }
+       return;
+    }
+    actions.handleSubmit(e);
+  };
 
   return (
     <EditorProvider value={{ isEditing: editMode, selectedPath, onSelect: actions.setSelectedPath }}>
@@ -21,7 +56,7 @@ const App = () => {
         {/* 1. Header */}
         <header className="fixed top-0 left-0 right-0 h-16 bg-zinc-950/80 backdrop-blur-md border-b border-white/5 z-50 flex items-center justify-between px-6">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center shadow-lg shadow-indigo-500/20">
+            <div className={`w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center shadow-lg shadow-indigo-500/20 ${isGenerating ? 'animate-spin' : ''}`}>
               <Zap className="w-5 h-5 text-white fill-current" />
             </div>
             <div>
@@ -108,7 +143,12 @@ const App = () => {
 
                       {msg.ui && (
                           <div className="w-full flex justify-center py-6">
-                               <DeviceWrapper context={context} node={msg.ui} onAction={actions.handleAction} />
+                               <DeviceWrapper 
+                                  context={context} 
+                                  node={msg.ui} 
+                                  onAction={actions.handleAction} 
+                                  onError={actions.fixNode} // Pass the auto-healer
+                               />
                           </div>
                       )}
                     </div>
@@ -143,25 +183,25 @@ const App = () => {
                  </div>
               </div>
 
-              <form onSubmit={actions.handleSubmit} className="relative group transform transition-all hover:-translate-y-1">
-                  <div className={`absolute inset-0 bg-gradient-to-r ${editMode ? 'from-indigo-600 via-purple-600 to-pink-600' : 'from-indigo-500 via-purple-500 to-pink-500'} rounded-2xl blur opacity-20 group-hover:opacity-40 transition-opacity duration-500`} />
+              <form onSubmit={handleCustomSubmit} className="relative group transform transition-all hover:-translate-y-1">
+                  <div className={`absolute inset-0 bg-gradient-to-r ${editMode ? 'from-indigo-600 via-purple-600 to-pink-600' : (isGenerating ? 'from-emerald-500 via-teal-500 to-cyan-500' : 'from-indigo-500 via-purple-500 to-pink-500')} rounded-2xl blur opacity-20 group-hover:opacity-40 transition-opacity duration-500`} />
                   
                   <div className="relative flex items-center bg-zinc-900/80 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl overflow-hidden">
                       <div className="pl-4 pr-3 text-slate-500">
-                          {editMode ? <PenTool className="w-5 h-5 text-indigo-400" /> : <Terminal className="w-5 h-5" />}
+                          {editMode ? <PenTool className="w-5 h-5 text-indigo-400" /> : (isGenerating ? <Palette className="w-5 h-5 text-emerald-400 animate-pulse" /> : <Terminal className="w-5 h-5" />)}
                       </div>
                       <input
                           type="text"
                           value={input}
                           onChange={(e) => actions.setInput(e.target.value)}
-                          placeholder={editMode && selectedPath ? "Describe how to change the selected element..." : "Describe your UI component..."}
+                          placeholder={editMode && selectedPath ? "Refine selected element..." : "Describe component (or /theme name)..."}
                           className="w-full bg-transparent text-slate-100 placeholder-slate-500 py-4 px-2 focus:outline-none font-medium"
-                          disabled={loading}
+                          disabled={loading || isGenerating}
                       />
                       <div className="pr-2">
                           <button
                               type="submit"
-                              disabled={!input.trim() || loading}
+                              disabled={!input.trim() || loading || isGenerating}
                               className="p-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl disabled:opacity-50 disabled:bg-zinc-700 transition-all shadow-lg shadow-indigo-500/20"
                           >
                               <ArrowUp className="w-5 h-5" />
@@ -186,7 +226,7 @@ const App = () => {
   );
 };
 
-const DeviceWrapper = ({ context, node, onAction, isStreaming }: any) => {
+const DeviceWrapper = ({ context, node, onAction, isStreaming, onError }: any) => {
     const [showCode, setShowCode] = useState(false);
 
     return (
@@ -221,7 +261,7 @@ const DeviceWrapper = ({ context, node, onAction, isStreaming }: any) => {
                     ${context.device === 'mobile' ? 'min-h-[667px]' : 'min-h-[500px]'}
                     overflow-hidden
                 `}>
-                    <DynamicRenderer node={node} onAction={onAction} path="root" />
+                    <DynamicRenderer node={node} onAction={onAction} onError={onError} path="root" />
                 </div>
 
                 {showCode && (

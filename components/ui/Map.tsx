@@ -1,21 +1,23 @@
+
 import React from 'react';
 import * as Lucide from 'lucide-react';
-import { THEME } from './theme';
+import { useTheme } from '../ThemeContext';
 
 export const MapWidget = ({ label, style = 'DARK', markers = [] }: any) => {
-  const theme = THEME.map.styles[style as keyof typeof THEME.map.styles] || THEME.map.styles.DARK;
+  const { theme } = useTheme();
+  const mapTheme = theme.map.styles[style as keyof typeof theme.map.styles] || theme.map.styles.DARK;
 
   return (
     <div className="w-full h-72 rounded-xl overflow-hidden relative border border-zinc-700 group shadow-2xl">
       {/* Mock Map Background */}
       <div 
         className="absolute inset-0 w-full h-full transition-colors duration-500"
-        style={{ backgroundColor: theme.bg }}
+        style={{ backgroundColor: mapTheme.bg }}
       >
         <div 
           className="absolute inset-0 opacity-20"
           style={{ 
-            backgroundImage: `linear-gradient(${theme.grid} 1px, transparent 1px), linear-gradient(90deg, ${theme.grid} 1px, transparent 1px)`,
+            backgroundImage: `linear-gradient(${mapTheme.grid} 1px, transparent 1px), linear-gradient(90deg, ${mapTheme.grid} 1px, transparent 1px)`,
             backgroundSize: '40px 40px'
           }}
         />

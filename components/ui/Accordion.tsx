@@ -2,10 +2,11 @@
 import React from 'react';
 import * as Lucide from 'lucide-react';
 import { RenderChildren } from './utils';
-import { THEME } from './theme';
+import { useTheme } from '../ThemeContext';
 
 export const Accordion = ({ items, variant = 'DEFAULT', onAction, path }: any) => {
   const [openIndex, setOpenIndex] = React.useState<number | null>(0);
+  const { theme } = useTheme();
 
   const toggle = (index: number) => {
     setOpenIndex(openIndex === index ? null : index);
@@ -13,19 +14,14 @@ export const Accordion = ({ items, variant = 'DEFAULT', onAction, path }: any) =
 
   if (!items || !Array.isArray(items)) return null;
 
-  const containerClass = THEME.accordion.container[variant as keyof typeof THEME.accordion.container] || THEME.accordion.container.DEFAULT;
-  const itemClass = THEME.accordion.item[variant as keyof typeof THEME.accordion.item] || THEME.accordion.item.DEFAULT;
+  const containerClass = theme.accordion.container[variant as keyof typeof theme.accordion.container] || theme.accordion.container.DEFAULT;
+  const itemClass = theme.accordion.item[variant as keyof typeof theme.accordion.item] || theme.accordion.item.DEFAULT;
 
   return (
     <div className={`w-full ${containerClass}`}>
       {items.map((item: any, i: number) => {
         const isOpen = openIndex === i;
         const content = Array.isArray(item.content) ? item.content : [];
-        // The items array is at `path.items`
-        // Item i is at `path.items.i`
-        // Content is at `path.items.i.content` - but RenderChildren expects UINode[] path?
-        // Wait, items is array of objects, not UINodes. item.content is UINode[].
-        // So path to content array is `path.items.${i}.content`.
         const contentPath = path ? `${path}.items.${i}.content` : undefined;
         
         return (

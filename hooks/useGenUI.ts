@@ -2,42 +2,18 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { UINode, UserContext, UIAction } from '../types';
 import { INITIAL_CONTEXT } from '../constants';
-import { generateUIStream, refineComponent } from '../services/geminiService';
+import { generateUIStream, refineComponent, fixComponent } from '../services/geminiService';
+import { generateTheme } from '../services/themeAgent';
 import { parsePartialJson } from '../services/streamParser';
 import { executeTool } from '../services/toolService';
 import { telemetry } from '../services/telemetry';
 import { ModelConfig, DEFAULT_CONFIG } from '../types/settings';
+import { setByPath } from '../components/ui/utils';
 import confetti from 'canvas-confetti';
 
-/**
- * Immutable Deep Set Utility (Recursive & Type-Safe)
- */
-function setByPath<T>(obj: T, path: string, value: any): T {
-  if (!path) return value as unknown as T;
-  const segments = path.split('.');
+const STORAGE_KEY = 'genui_model_config';
 
-  const update = (current: any, depth: number): any => {
-    if (depth === segments.length) return value;
-    const key = segments[depth];
-    
-    let clone: any;
-    if (Array.isArray(current)) {
-      clone = [...current];
-    } else if (current && typeof current === 'object') {
-      clone = { ...current };
-    } else {
-      const isIndex = !isNaN(Number(key));
-      clone = isIndex ? [] : {};
-    }
-
-    clone[key] = update(current ? current[key] : undefined, depth + 1);
-    return clone;
-  };
-
-  return update(obj, 0) as T;
-}
-
-// Deep get utility to retrieve sub-tree for refinement
+// Helper for deep retrieval
 function getByPath(obj: any, path: string): any {
   if (!path || !obj) return undefined;
   const segments = path.split('.');
@@ -48,8 +24,6 @@ function getByPath(obj: any, path: string): any {
   }
   return current;
 }
-
-const STORAGE_KEY = 'genui_model_config';
 
 export const useGenUI = () => {
   // --- State ---
@@ -153,6 +127,46 @@ export const useGenUI = () => {
     }
   }, [context, streamingNode, config]);
 
+  const fixNode = useCallback(async (error: Error, node: UINode, path: string) => {
+    console.log("Attempting to fix node at path:", path);
+    // Find the message that contains this node
+    // This is tricky because path='root' implies root of one message's UI. 
+    // We assume the error happened in the LATEST message that has UI.
+    
+    const lastUiMsgIndex = [...messages].reverse().findIndex(m => m.ui);
+    const actualIndex = lastUiMsgIndex >= 0 ? messages.length - 1 - lastUiMsgIndex : -1;
+
+    if (actualIndex === -1) return;
+
+    try {
+      const fixedNode = await fixComponent(error.message, node, config);
+      
+      // We need to splice this fixed node back into the tree.
+      // The path passed from DynamicRenderer is like "root.container.children.0.card"
+      // We need to strip "root." to match the object structure relative to `ui` root.
+      const relativePath = path.startsWith('root.') ? path.substring(5) : (path === 'root' ? '' : path);
+
+      setMessages(prev => {
+        const next = [...prev];
+        const oldUi = next[actualIndex].ui;
+        // If path was just 'root', replace the whole UI
+        if (!relativePath) {
+           next[actualIndex] = { ...next[actualIndex], ui: fixedNode };
+        } else {
+           next[actualIndex] = { ...next[actualIndex], ui: setByPath(oldUi, relativePath, fixedNode) };
+        }
+        return next;
+      });
+      
+      // Notify user
+      setMessages(prev => [...prev, { role: 'system', text: `🔧 Auto-Healed component at ${path}` }]);
+
+    } catch (err) {
+      console.error("Failed to heal:", err);
+      setMessages(prev => [...prev, { role: 'system', text: `❌ Auto-Healing failed: ${err}` }]);
+    }
+  }, [messages, config]);
+
   const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
     if (!input.trim() || loading) return;
@@ -219,7 +233,7 @@ export const useGenUI = () => {
     setStreamingNode(null);
   }, [input, loading, handleGeneration, editMode, selectedPath, messages, config]);
 
-  const handleAction = useCallback((action: UIAction) => {
+  const handleAction = useCallback(async (action: UIAction) => {
     if (action.type === 'TRIGGER_EFFECT') {
         const effect = action.payload?.effect;
         if (effect === 'CONFETTI') confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
@@ -230,6 +244,6 @@ export const useGenUI = () => {
   return {
     state: { context, input, loading, streamingNode, messages, metrics, editMode, selectedPath, config },
     refs: { messagesEndRef },
-    actions: { setContext, setInput, handleSubmit, handleAction, setEditMode, setSelectedPath, setConfig }
+    actions: { setContext, setInput, handleSubmit, handleAction, setEditMode, setSelectedPath, setConfig, fixNode }
   };
 };

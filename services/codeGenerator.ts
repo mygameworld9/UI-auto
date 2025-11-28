@@ -1,6 +1,6 @@
 
 import { UINode } from "../types";
-import { THEME } from "../components/ui/theme";
+import { DEFAULT_THEME as THEME } from "../components/ui/theme";
 
 // Context to track imports and depth during generation
 interface GenContext {

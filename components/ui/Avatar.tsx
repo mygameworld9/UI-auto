@@ -1,8 +1,10 @@
+
 import React from 'react';
-import { THEME } from './theme';
+import { useTheme } from '../ThemeContext';
 
 export const Avatar = ({ initials, src, status }: any) => {
-  const statusColor = status ? (THEME.avatar.status[status as keyof typeof THEME.avatar.status] || THEME.avatar.status.OFFLINE) : '';
+  const { theme } = useTheme();
+  const statusColor = status ? (theme.avatar.status[status as keyof typeof theme.avatar.status] || theme.avatar.status.OFFLINE) : '';
 
   return (
     <div className="relative inline-block group">

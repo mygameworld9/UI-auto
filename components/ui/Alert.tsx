@@ -1,11 +1,12 @@
+
 import React from 'react';
 import * as Lucide from 'lucide-react';
-import { THEME } from './theme';
+import { useTheme } from '../ThemeContext';
 
 export const Alert = ({ title, description, variant = 'INFO' }: any) => {
-  const styles = THEME.alert.variants[variant as keyof typeof THEME.alert.variants] || THEME.alert.variants.INFO;
+  const { theme } = useTheme();
+  const styles = theme.alert.variants[variant as keyof typeof theme.alert.variants] || theme.alert.variants.INFO;
   
-  // Icon mapping remains in component as it's logic/JSX, not just a token string
   const icons: Record<string, any> = {
     INFO: Lucide.Info,
     SUCCESS: Lucide.CheckCircle2,
@@ -16,7 +17,7 @@ export const Alert = ({ title, description, variant = 'INFO' }: any) => {
   const Icon = icons[variant] || icons.INFO;
 
   return (
-    <div className={`${THEME.alert.base} ${styles}`}>
+    <div className={`${theme.alert.base} ${styles}`}>
       <div className="mt-0.5 p-1 bg-white/5 rounded-full">
          <Icon className="w-4 h-4 flex-shrink-0" />
       </div>

@@ -1,8 +1,10 @@
+
 import React from 'react';
-import { THEME } from './theme';
+import { useTheme } from '../ThemeContext';
 
 export const Progress = ({ label, value, color = 'BLUE' }: any) => {
-  const colorClass = THEME.progress.colors[color as keyof typeof THEME.progress.colors] || THEME.progress.colors.BLUE;
+  const { theme } = useTheme();
+  const colorClass = theme.progress.colors[color as keyof typeof theme.progress.colors] || theme.progress.colors.BLUE;
   
   return (
     <div className="w-full space-y-3">

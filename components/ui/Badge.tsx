@@ -1,11 +1,13 @@
+
 import React from 'react';
-import { THEME } from './theme';
+import { useTheme } from '../ThemeContext';
 
 export const Badge = ({ label, color = 'BLUE' }: any) => {
-  const colorClass = THEME.badge.colors[color as keyof typeof THEME.badge.colors] || THEME.badge.colors.BLUE;
+  const { theme } = useTheme();
+  const colorClass = theme.badge.colors[color as keyof typeof theme.badge.colors] || theme.badge.colors.BLUE;
   
   return (
-    <span className={`${THEME.badge.base} ${colorClass}`}>
+    <span className={`${theme.badge.base} ${colorClass}`}>
       {label}
     </span>
   );

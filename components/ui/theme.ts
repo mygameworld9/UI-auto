@@ -1,4 +1,4 @@
-export const THEME = {
+export const DEFAULT_THEME = {
   // --------------------------------------------------------------------------
   // TYPOGRAPHY
   // --------------------------------------------------------------------------
@@ -222,3 +222,5 @@ export const THEME = {
     }
   }
 };
+
+export type ThemeType = typeof DEFAULT_THEME;

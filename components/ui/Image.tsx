@@ -1,8 +1,10 @@
+
 import React from 'react';
-import { THEME } from './theme';
+import { useTheme } from '../ThemeContext';
 
 export const ImageComponent = ({ src, alt, caption, aspectRatio = 'VIDEO' }: any) => {
-  const ratioClass = THEME.image.ratios[aspectRatio as keyof typeof THEME.image.ratios] || THEME.image.ratios.VIDEO;
+  const { theme } = useTheme();
+  const ratioClass = theme.image.ratios[aspectRatio as keyof typeof theme.image.ratios] || theme.image.ratios.VIDEO;
 
   return (
     <figure className="w-full flex flex-col gap-3 group">
