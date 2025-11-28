@@ -134,9 +134,7 @@ const Workspace = () => {
                       {msg.ui && (
                         <div className="mt-1 px-1">
                            <button 
-                              onClick={() => {
-                                alert("History restoration would happen here.");
-                              }}
+                              onClick={() => msg.ui && actions.restoreUI(msg.ui)}
                               className="text-[10px] flex items-center gap-1 text-slate-600 hover:text-indigo-400 transition-colors"
                            >
                               <RotateCcw className="w-3 h-3" /> Restore this version
