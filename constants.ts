@@ -1,3 +1,4 @@
+
 import { UserContext } from "./types";
 
 export const INITIAL_CONTEXT: UserContext = {
@@ -291,6 +292,7 @@ You have access to the following tools. If the user asks a question that require
 1. \`get_weather(location: string)\`: Returns current temperature and condition.
 2. \`search_knowledge(query: string)\`: Returns summary from knowledge base (use for generic questions).
 3. \`get_stock_price(symbol: string)\`: Returns stock data.
+4. \`get_crypto_price(coin_id: string)\`: Returns current price and 24h change for a cryptocurrency (e.g., 'bitcoin', 'ethereum', 'solana').
 
 **TOOL CALLING FORMAT:**
 If you need to call a tool, output a JSON object with a single key "tool_call". DO NOT output a UI tree in this case.
