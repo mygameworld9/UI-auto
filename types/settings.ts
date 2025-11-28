@@ -4,5 +4,5 @@ export interface ModelConfig {
 }
 
 export const DEFAULT_CONFIG: ModelConfig = {
-  model: "gemini-2.0-flash-exp"
+  model: "gemini-2.5-flash"
 };

@@ -1,4 +1,3 @@
-
 /**
  * Best-Effort Partial JSON Parser
  * 
@@ -11,12 +10,6 @@
 export function parsePartialJson(jsonString: string): any {
   // If empty, return null
   if (!jsonString.trim()) return null;
-
-  // Fix: Strip non-JSON prefix (e.g. "Here is the JSON: ")
-  const start = Math.max(jsonString.indexOf('{'), jsonString.indexOf('['));
-  if (start > -1) {
-    jsonString = jsonString.substring(start);
-  }
 
   try {
     // 1. Try parsing as-is (optimistic)

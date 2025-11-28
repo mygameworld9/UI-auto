@@ -86,8 +86,9 @@ const DynamicRenderer: React.FC<RendererProps> = ({ node, onAction, index = 0, p
        });
        
        return (
-        <div className="p-2 border border-yellow-500/50 text-yellow-500 text-xs">
-           ⚠️ Unknown: {Object.keys(node)[0]}
+        <div className="p-4 my-2 border border-dashed border-yellow-500/50 bg-yellow-500/10 text-yellow-500 text-xs font-mono rounded overflow-hidden">
+          <div className="font-bold mb-1">⚠️ Unknown Component: {Object.keys(node)[0]}</div>
+          <pre className="text-[10px] opacity-70">{JSON.stringify(node, null, 2)}</pre>
         </div>
        );
     }
@@ -100,8 +101,8 @@ const DynamicRenderer: React.FC<RendererProps> = ({ node, onAction, index = 0, p
   // 3. Fallback
   if (!componentType) {
     return (
-      <div className="p-2 border border-yellow-500/50 text-yellow-500 text-xs">
-        ⚠️ Unknown: {Object.keys(node)[0]}
+      <div className="p-4 border border-dashed border-yellow-500/50 bg-yellow-500/10 text-yellow-500 text-xs font-mono rounded">
+        ⚠️ Unknown Component: {Object.keys(node)[0]}
       </div>
     );
   }

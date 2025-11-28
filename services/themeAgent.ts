@@ -31,7 +31,7 @@ export async function generateTheme(userInput: string, config: ModelConfig): Pro
 
   try {
     const response = await ai.models.generateContent({
-      model: config.model || 'gemini-2.0-flash-exp',
+      model: config.model || 'gemini-2.5-flash',
       contents: `Generate a UI theme for: "${userInput}". Make it distinct and visually stunning.`,
       config: {
         systemInstruction: SYSTEM_PROMPT,
