@@ -186,6 +186,7 @@ const InputProps = z.object({
   label: z.string().optional(),
   placeholder: z.string().optional(),
   inputType: z.string().optional(),
+  value: z.string().optional(),
 });
 const InputNode = z.object({ input: InputProps });
 

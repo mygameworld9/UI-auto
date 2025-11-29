@@ -25,6 +25,33 @@ function getByPath(obj: any, path: string): any {
   return current;
 }
 
+// Helper to crawl tree and collect input values
+function collectFormData(node: any): Record<string, any> {
+  let data: Record<string, any> = {};
+  
+  if (!node || typeof node !== 'object') return data;
+
+  // Check if current node is an input with a label
+  if (node.input && node.input.label) {
+     const key = node.input.label;
+     const value = node.input.value || "";
+     data[key] = value;
+  }
+
+  // Recursive traversal
+  Object.values(node).forEach(childValue => {
+     if (Array.isArray(childValue)) {
+         childValue.forEach(child => {
+             data = { ...data, ...collectFormData(child) };
+         })
+     } else if (typeof childValue === 'object' && childValue !== null) {
+         data = { ...data, ...collectFormData(childValue) };
+     }
+  });
+  
+  return data;
+}
+
 export const useGenUI = () => {
   // --- State ---
   const [context, setContext] = useState<UserContext>(INITIAL_CONTEXT);
@@ -129,9 +156,6 @@ export const useGenUI = () => {
 
   const fixNode = useCallback(async (error: Error, node: UINode, path: string) => {
     console.log("Attempting to fix node at path:", path);
-    // Find the message that contains this node
-    // This is tricky because path='root' implies root of one message's UI. 
-    // We assume the error happened in the LATEST message that has UI.
     
     const lastUiMsgIndex = [...messages].reverse().findIndex(m => m.ui);
     const actualIndex = lastUiMsgIndex >= 0 ? messages.length - 1 - lastUiMsgIndex : -1;
@@ -141,9 +165,6 @@ export const useGenUI = () => {
     try {
       const fixedNode = await fixComponent(error.message, node, config);
       
-      // We need to splice this fixed node back into the tree.
-      // The path passed from DynamicRenderer is like "root.container.children.0.card"
-      // We need to strip "root." to match the object structure relative to `ui` root.
       const relativePath = path.startsWith('root.') ? path.substring(5) : (path === 'root' ? '' : path);
 
       setMessages(prev => {
@@ -158,7 +179,6 @@ export const useGenUI = () => {
         return next;
       });
       
-      // Notify user
       setMessages(prev => [...prev, { role: 'system', text: `🔧 Auto-Healed component at ${path}` }]);
 
     } catch (err) {
@@ -167,12 +187,92 @@ export const useGenUI = () => {
     }
   }, [messages, config]);
 
+  const handleAction = useCallback(async (action: UIAction) => {
+    console.log("Handling Action:", action);
+
+    // 1. VISUAL EFFECTS
+    if (action.type === 'TRIGGER_EFFECT') {
+        const effect = action.payload?.effect;
+        if (effect === 'CONFETTI') confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
+        if (effect === 'SNOW') confetti({ particleCount: 100, spread: 360, ticks: 200, gravity: 0.4, decay: 0.94, startVelocity: 30, origin: { y: 0 }, colors: ['#ffffff', '#e0f2fe'] });
+        return;
+    }
+
+    // 2. STATE PATCHING (Local Updates)
+    if (action.type === 'PATCH_STATE' && action.path) {
+        const lastUiMsgIndex = [...messages].reverse().findIndex(m => m.ui);
+        const actualIndex = lastUiMsgIndex >= 0 ? messages.length - 1 - lastUiMsgIndex : -1;
+
+        if (actualIndex === -1) return;
+
+        // Strip "root." prefix to get relative path within the UI object
+        const relativePath = action.path.startsWith('root.') ? action.path.substring(5) : action.path;
+        
+        setMessages(prev => {
+            const next = [...prev];
+            const oldUi = next[actualIndex].ui;
+            // Merge existing props with payload
+            // e.g. Input has { label: '...' }, payload is { value: '...' }. 
+            // setByPath replaces the object at path. We need to merge if targeting a component props object.
+            
+            // However, setByPath implementation (utils.ts) replaces the value at the key.
+            // If path ends in 'input', payload should be the full input props OR we update specific prop like 'input.value'.
+            // In Input.tsx, we sent payload: { value: ... } and path: ...input
+            // This would replace input props with just { value }. That's bad.
+            // Let's assume the component sends the sub-path or we handle merging here.
+            
+            // FIX: If the payload is partial, we should probably retrieve current, merge, and set.
+            // But getting deep value is expensive to clone.
+            // Simplified: The components calling PATCH_STATE should target the exact leaf property OR send the full object.
+            // Input.tsx sends `value: debouncedValue` but the path passed to Input is `...input`. 
+            // So we should append `.value` to the path if we want to update just the value.
+            // OR we change Input.tsx to dispatch path + '.value'.
+            
+            // Let's check Input.tsx change:
+            // It sends payload: { value: debouncedValue }. 
+            // It receives path to the input component (e.g. root.children.0.input).
+            // If we use setByPath(ui, 'children.0.input', { value: ... }), we lose other props.
+            
+            // Optimization: Let's do a merge here for objects.
+            const targetProp = getByPath(oldUi, relativePath);
+            let newValue = action.payload;
+            
+            if (typeof targetProp === 'object' && targetProp !== null && typeof action.payload === 'object') {
+                 newValue = { ...targetProp, ...action.payload };
+            }
+
+            next[actualIndex] = { ...next[actualIndex], ui: setByPath(oldUi, relativePath, newValue) };
+            return next;
+        });
+        return;
+    }
+
+    // 3. FORM SUBMISSION
+    if (action.type === 'SUBMIT_FORM') {
+        setLoading(true);
+        // Find the active UI
+        const lastUiMsg = [...messages].reverse().find(m => m.ui);
+        if (!lastUiMsg || !lastUiMsg.ui) {
+            setLoading(false);
+            return;
+        }
+
+        const formData = collectFormData(lastUiMsg.ui);
+        const submissionText = `User Submitted Form Data: ${JSON.stringify(formData, null, 2)}`;
+        
+        setMessages(prev => [...prev, { role: 'system', text: 'Submitting form data...' }]);
+        
+        // Feed this back to the LLM to decide what to do next
+        await handleGeneration(submissionText, "Form Submission");
+        setLoading(false);
+        return;
+    }
+
+  }, [messages, handleGeneration]);
+
   const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
     if (!input.trim() || loading) return;
-
-    // NOTE: API Key is now handled via process.env.API_KEY in the service layer.
-    // We do not check it here in client state.
 
     const userMsg = input;
     setInput('');
@@ -230,14 +330,6 @@ export const useGenUI = () => {
     setLoading(false);
     setStreamingNode(null);
   }, [input, loading, handleGeneration, editMode, selectedPath, messages, config]);
-
-  const handleAction = useCallback(async (action: UIAction) => {
-    if (action.type === 'TRIGGER_EFFECT') {
-        const effect = action.payload?.effect;
-        if (effect === 'CONFETTI') confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
-        return;
-    }
-  }, []);
 
   return {
     state: { context, input, loading, streamingNode, messages, metrics, editMode, selectedPath, config },
